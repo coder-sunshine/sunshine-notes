@@ -1,0 +1,85 @@
+{
+  "name": "sunshine-notes",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write --log-level warn .",
+    "format:check": "prettier --check .",
+    "stylelint": "stylelint --cache \"**/*.{css,scss,less,vue}\" --cache-location node_modules/.cache/stylelint/",
+    "stylelint:fix": "stylelint --cache --fix \"**/*.{css,scss,less,vue}\" --cache-location node_modules/.cache/stylelint/",
+    "spell": "cspell lint --dot --gitignore --color --cache --show-suggestions \"**/*\"",
+    "prepare": "husky",
+    "preinstall": "npx only-allow pnpm",
+    "commit": "czg"
+  },
+  "keywords": [],
+  "author": {
+    "name": "coder-sunshine",
+    "email": "283953455@qq.com"
+  },
+  "license": "ISC",
+  "packageManager": "pnpm@10.21.0",
+  "devDependencies": {
+    "@commitlint/cli": "^20.2.0",
+    "@commitlint/config-conventional": "^20.2.0",
+    "@eslint/js": "^9.39.2",
+    "@prettier/plugin-xml": "^3.4.2",
+    "@types/eslint-plugin-jsx-a11y": "^6.10.1",
+    "@types/node": "^22.10.2",
+    "cspell": "^9.4.0",
+    "cz-git": "^1.12.0",
+    "czg": "^1.12.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-mdx": "^3.6.2",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-vue": "^10.6.2",
+    "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "jiti": "^2.6.1",
+    "lint-staged": "^16.2.7",
+    "postcss-html": "^1.8.0",
+    "postcss-less": "^6.0.0",
+    "postcss-scss": "^4.0.9",
+    "prettier": "^3.7.4",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "stylelint": "^16.26.1",
+    "stylelint-config-recess-order": "^7.4.0",
+    "stylelint-config-standard": "^39.0.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.51.0",
+    "vue-eslint-parser": "^10.2.0"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,vue,astro}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,scss,less,vue}": [
+      "stylelint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yaml,yml}": [
+      "prettier --write"
+    ]
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-git"
+    }
+  },
+  "engines": {
+    "node": ">=22.21.1"
+  },
+  "volta": {
+    "node": "22.21.1"
+  }
+}

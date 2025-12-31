@@ -1,0 +1,43 @@
+# ===== 前端框架 =====
+composables
+jotai
+nextjs
+nuxt
+nuxtjs
+pinia
+reactjs
+recoil
+redux
+vuetify
+vuex
+zustand
+
+# ===== 后端框架 =====
+expressjs
+fastify
+mikro
+nestjs
+prisma
+typeorm
+
+# ===== 样式相关 =====
+antd
+arco
+sass
+scss
+styl
+stylus
+tailwind
+tailwindcss
+unocss
+
+# ===== AI 相关 =====
+chatgpt
+commitlint
+embeddings
+kiro
+langchain
+llm
+openai
+Prefixs
+vectorstore

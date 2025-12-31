@@ -1,0 +1,13 @@
+{
+  "name": "@sunshine-notes/config",
+  "version": "1.0.0",
+  "private": true,
+  "description": "共享配置文件",
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.react.json": "./tsconfig.react.json",
+    "./tsconfig.vue.json": "./tsconfig.vue.json",
+    "./tsconfig.node.json": "./tsconfig.node.json"
+  }
+}
