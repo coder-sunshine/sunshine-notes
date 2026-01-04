@@ -25,7 +25,7 @@ export default defineConfig({
       },
       defaultLocale: 'root',
       lastUpdated: true,
-      customCss: ['./src/styles/global.css'],
+      customCss: ['./src/styles/global.css', './src/styles/custom.css'],
       social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/coder-sunshine/sunshine-notes' }],
       sidebar: [
         {
