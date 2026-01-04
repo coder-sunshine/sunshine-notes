@@ -1,4 +1,5 @@
 # ===== 前端框架 =====
+astrojs
 composables
 jotai
 nextjs

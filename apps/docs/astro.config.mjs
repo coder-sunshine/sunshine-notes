@@ -14,6 +14,9 @@ export default defineConfig({
     react(),
     starlight({
       title: '秘密の花园',
+      components: {
+        LastUpdated: '@/components/LastUpdated.astro',
+      },
       locales: {
         root: {
           label: '简体中文',

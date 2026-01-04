@@ -1,0 +1,21 @@
+---
+const { lastUpdated } = Astro.locals.starlightRoute
+---
+
+{
+  lastUpdated && (
+    <p>
+      最后更改时间:{' '}
+      {lastUpdated.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      })}
+    </p>
+  )
+}
