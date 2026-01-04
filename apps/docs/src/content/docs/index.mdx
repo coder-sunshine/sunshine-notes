@@ -1,39 +1,38 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: Sunshine Notes
+description: 个人技术学习笔记
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
+  tagline: 好记性不如烂笔头 📝
   image:
     file: ../../assets/houston.webp
   actions:
-    - text: Example Guide
-      link: /guides/example/
+    - text: 开始阅读
+      link: /frontend/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
+    - text: GitHub
+      link: https://github.com/coder-sunshine/sunshine-notes
       icon: external
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components'
+import { CardGrid, LinkCard } from '@astrojs/starlight/components'
 
-## Next steps
+## 🎯 前端
 
-<CardGrid stagger>
-  <Card title='Update content' icon='pencil'>
-    Edit `src/content/docs/index.mdx` to see this page change.
-  </Card>
-  <Card title='Change page layout' icon='document'>
-    Delete `template: splash` in `src/content/docs/index.mdx` to display a sidebar on this page.
-  </Card>
-  <Card title='Add new content' icon='add-document'>
-    Add Markdown or MDX files to `src/content/docs` to create new pages.
-  </Card>
-  <Card title='Configure your site' icon='setting'>
-    Edit your `sidebar` and other config in `astro.config.mjs`.
-  </Card>
-  <Card title='Read the docs' icon='open-book'>
-    Learn more in [the Starlight Docs](https://starlight.astro.build/).
-  </Card>
+<CardGrid>
+  <LinkCard title='JavaScript' href='/frontend/javascript/' description='基础语法、ES6+、异步编程、设计模式' />
+  <LinkCard title='TypeScript' href='/frontend/typescript/' description='类型系统、泛型、高级类型、类型体操' />
+  <LinkCard title='React' href='/frontend/react/' description='Hooks、状态管理、性能优化、最佳实践' />
+  <LinkCard title='Vue' href='/frontend/vue/' description='组合式 API、响应式原理、Pinia、Vue Router' />
+  <LinkCard title='CSS' href='/frontend/css/' description='布局技巧、动画效果、CSS-in-JS、Tailwind' />
+  <LinkCard title='工程化' href='/frontend/engineering/' description='Vite、Webpack、ESLint、CI/CD、Monorepo' />
+</CardGrid>
+
+## 🔧 后端
+
+<CardGrid>
+  <LinkCard title='Node.js' href='/backend/nodejs/' description='核心模块、异步编程、Stream、性能调优' />
+  <LinkCard title='NestJS' href='/backend/nestjs/' description='控制器、服务、模块、中间件、守卫' />
+  <LinkCard title='数据库' href='/backend/database/' description='MySQL、MongoDB、Redis、ORM' />
 </CardGrid>

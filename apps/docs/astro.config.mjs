@@ -1,28 +1,77 @@
-// @ts-check
 import react from '@astrojs/react'
 import starlight from '@astrojs/starlight'
 import vue from '@astrojs/vue'
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'astro/config'
 
 // https://astro.build/config
 export default defineConfig({
+  vite: {
+    plugins: [tailwindcss()],
+  },
   integrations: [
     vue(),
     react(),
     starlight({
-      title: 'My Docs',
-      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/withastro/starlight' }],
+      title: '秘密の花园',
+      locales: {
+        root: {
+          label: '简体中文',
+          lang: 'zh-CN',
+        },
+      },
+      defaultLocale: 'root',
+      lastUpdated: true,
+      customCss: ['./src/styles/global.css'],
+      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/coder-sunshine/sunshine-notes' }],
       sidebar: [
         {
-          label: 'Guides',
+          label: '前端',
           items: [
-            // Each item here is one entry in the navigation menu.
-            { label: 'Example Guide', slug: 'guides/example' },
+            { label: '概览', slug: 'frontend' },
+            {
+              label: 'JavaScript',
+              autogenerate: { directory: 'frontend/javascript' },
+            },
+            {
+              label: 'TypeScript',
+              autogenerate: { directory: 'frontend/typescript' },
+            },
+            {
+              label: 'React',
+              autogenerate: { directory: 'frontend/react' },
+            },
+            {
+              label: 'Vue',
+              autogenerate: { directory: 'frontend/vue' },
+            },
+            {
+              label: 'CSS',
+              autogenerate: { directory: 'frontend/css' },
+            },
+            {
+              label: '工程化',
+              autogenerate: { directory: 'frontend/engineering' },
+            },
           ],
         },
         {
-          label: 'Reference',
-          autogenerate: { directory: 'reference' },
+          label: '后端',
+          items: [
+            { label: '概览', slug: 'backend' },
+            {
+              label: 'Node.js',
+              autogenerate: { directory: 'backend/node' },
+            },
+            {
+              label: 'NestJS',
+              autogenerate: { directory: 'backend/nest' },
+            },
+            {
+              label: '数据库',
+              autogenerate: { directory: 'backend/database' },
+            },
+          ],
         },
       ],
     }),

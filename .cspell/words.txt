@@ -40,4 +40,5 @@ langchain
 llm
 openai
 Prefixs
+seti
 vectorstore
