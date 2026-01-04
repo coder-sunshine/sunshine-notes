@@ -13,7 +13,10 @@
     "spell": "cspell lint --dot --gitignore --color --cache --show-suggestions \"**/*\"",
     "prepare": "husky",
     "preinstall": "npx only-allow pnpm",
-    "commit": "czg"
+    "commit": "czg",
+    "docs:dev": "pnpm --filter docs dev",
+    "docs:build": "pnpm --filter docs build",
+    "docs:preview": "pnpm --filter docs preview"
   },
   "keywords": [],
   "author": {
