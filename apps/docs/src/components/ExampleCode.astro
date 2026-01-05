@@ -1,0 +1,67 @@
+---
+/**
+ * 示例代码展示组件
+ * 用于在文档中引用 packages/examples-* 中的代码文件
+ *
+ * @example
+ * // 从 examples-browser 读取（默认）
+ * <ExampleCode file="javascript/event-loop.html" />
+ *
+ * // 从 examples-node 读取
+ * <ExampleCode file="express/server.ts" source="node" />
+ *
+ * // 高亮指定行
+ * <ExampleCode file="demo.js" mark={[3, '5-8', { range: '10-12', label: '重点' }]} />
+ *
+ * // 插入和删除标记（diff 效果）
+ * <ExampleCode file="demo.js" ins={[1, 2]} del={[5, 6]} />
+ */
+import type { ComponentProps } from 'astro/types'
+import { Code } from '@astrojs/starlight/components'
+
+/** 支持的示例来源类型，新增包时需在此添加 */
+type SourceType = 'browser' | 'node'
+
+/** 扩展 Code 组件的 Props，添加示例文件相关属性 */
+interface Props extends Omit<ComponentProps<typeof Code>, 'code'> {
+  /** 文件路径，相对于 examples-{source}/src/ */
+  file: string
+  /** 示例来源：browser | node，默认 browser */
+  source?: SourceType
+}
+
+const { file, source = 'browser', lang, title, ...restProps } = Astro.props
+
+// 统一加载所有 examples-* 包的文件，新增包时无需修改此处
+const allExamples = import.meta.glob('../../../../packages/examples-*/src/**/*', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+})
+
+// 根据 source 构建路径并查找文件
+const basePath = `../../../../packages/examples-${source}/src/${file}`
+const code = (allExamples[basePath] as string) || `// 文件未找到: ${file}`
+
+// 扩展名到语言的映射
+const extLangMap: Record<string, string> = {
+  html: 'html',
+  js: 'javascript',
+  mjs: 'javascript',
+  ts: 'typescript',
+  mts: 'typescript',
+  vue: 'vue',
+  tsx: 'tsx',
+  jsx: 'jsx',
+  css: 'css',
+  scss: 'scss',
+  json: 'json',
+  md: 'markdown',
+  mdx: 'mdx',
+}
+
+const ext = file.split('.').pop() || ''
+const finalLang = lang || extLangMap[ext] || ext
+---
+
+<Code code={code} lang={finalLang} title={title || file} {...restProps} />

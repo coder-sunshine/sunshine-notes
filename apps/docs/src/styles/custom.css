@@ -1,6 +1,6 @@
 /* 强调的文字加上渐变 */
 :not(pre) > code {
-  font-weight: 600;
+  font-weight: 700;
   background: linear-gradient(to right, #3b82f6, #8b5cf6);
   background-clip: text;
   -webkit-text-fill-color: transparent;

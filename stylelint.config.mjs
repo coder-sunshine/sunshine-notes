@@ -53,5 +53,5 @@ export default {
     // 不限制 @import 写法
     'import-notation': null,
   },
-  ignoreFiles: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.astro/**'],
+  ignoreFiles: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.astro/**', '**/*.html'],
 }

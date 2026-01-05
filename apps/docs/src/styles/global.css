@@ -1,1 +1,10 @@
-@import 'tailwindcss';
+@import 'tailwindcss' layer(base);
+
+@layer base {
+  /* 禁用 Tailwind 对列表的样式重置，保留 Starlight 默认样式 */
+  :where(ul, ol) {
+    padding: revert;
+    margin: revert;
+    list-style: revert;
+  }
+}

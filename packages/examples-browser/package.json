@@ -1,0 +1,7 @@
+{
+  "name": "@sunshine-notes/examples-browser",
+  "version": "1.0.0",
+  "private": true,
+  "description": "浏览器环境代码示例",
+  "type": "module"
+}

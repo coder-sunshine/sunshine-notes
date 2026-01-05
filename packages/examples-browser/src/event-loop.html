@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>事件循环示例</title>
+  </head>
+  <body>
+    <h1 id="h1">h1的文本信息</h1>
+    <button id="btn">change</button>
+
+    <script>
+      // 死循环指定的时间，用于演示主线程阻塞
+      function delay(duration) {
+        console.log('delay开始执行')
+        const start = Date.now()
+        while (Date.now() - start < duration) {}
+        console.log('delay结束执行')
+      }
+
+      btn.onclick = function () {
+        console.log('点击事件开始执行')
+        h1.textContent = '修改h1的内容' // DOM 修改是同步的，但页面渲染要等 JS 执行完
+        delay(3000) // 阻塞主线程 3 秒
+      }
+    </script>
+  </body>
+</html>
