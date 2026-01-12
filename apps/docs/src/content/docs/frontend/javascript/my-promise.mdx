@@ -1,0 +1,598 @@
+---
+title: Promise A+ 规范实现
+description: 从零开始，一步步实现一个完全符合 Promise A+ 规范的 Promise
+---
+
+## 前言
+
+Promise 是 JavaScript 异步编程的核心。要真正理解 Promise，最好的方式就是自己动手实现一个。本文将基于 [Promise A+ 规范](https://promisesaplus.com/) 一步步实现一个完整的 Promise。
+
+## 理解 Promise A+ 规范
+
+在开始编码之前，我们需要理解 Promise A+ 规范的核心要点：
+
+1. **状态**：Promise 有且只有三种状态 - `pending`、`fulfilled`、`rejected`
+2. **状态转换**：只能从 `pending` 转换到 `fulfilled` 或 `rejected`，且转换后不可逆
+3. **then 方法**：Promise 必须提供 `then` 方法来访问其最终值或拒因
+4. **Promise Resolution Procedure**：这是规范中最复杂的部分，定义了如何处理 `then` 返回值
+
+## 第一步：定义状态常量和类型
+
+首先，我们定义 Promise 的三种状态和相关类型：
+
+```ts
+// 三种状态常量
+const PENDING = 'pending'
+const FULFILLED = 'fulfilled'
+const REJECTED = 'rejected'
+
+// 状态类型
+type State = typeof PENDING | typeof FULFILLED | typeof REJECTED
+
+// resolve 函数类型：可以接收普通值或 PromiseLike 对象
+type Resolve<T> = (value: T | PromiseLike<T>) => void
+
+// reject 函数类型：接收任意拒因
+type Reject = (reason?: unknown) => void
+
+// executor 执行器类型：Promise 构造函数的参数
+type Executor<T> = (resolve: Resolve<T>, reject: Reject) => void
+
+// then 方法的回调类型
+type OnFulfilled<T, R> = ((value: T) => R | PromiseLike<R>) | null | undefined
+type OnRejected<R> = ((reason: unknown) => R | PromiseLike<R>) | null | undefined
+```
+
+**为什么这样设计？**
+
+- `Resolve<T>` 可以接收 `PromiseLike<T>`，这是为了支持 `resolve(anotherPromise)` 的场景
+- `OnFulfilled` 和 `OnRejected` 允许 `null | undefined`，因为 `then` 的参数是可选的
+- 回调的返回值可以是 `R | PromiseLike<R>`，支持在 `then` 中返回新的 Promise
+
+## 第二步：实现微任务调度
+
+Promise A+ 规范要求 `then` 的回调必须异步执行（在当前执行栈清空后）。我们需要一个跨环境的微任务调度函数：
+
+```ts
+const nextTick = (fn: () => void) => {
+  // 优先使用标准的 queueMicrotask（现代浏览器和 Node.js 都支持）
+  if (typeof queueMicrotask === 'function') {
+    queueMicrotask(fn)
+  }
+  // Node.js 环境的 process.nextTick
+  else if (typeof process !== 'undefined' && typeof process.nextTick === 'function') {
+    process.nextTick(fn)
+  }
+  // 降级到 setTimeout（宏任务，但能保证异步）
+  else {
+    setTimeout(fn, 0)
+  }
+}
+```
+
+**为什么需要微任务？**
+
+规范 2.2.4 要求：`onFulfilled` 或 `onRejected` 不能在执行上下文栈中只有平台代码之前被调用。简单说就是回调必须异步执行，这样可以保证：
+
+```ts
+console.log('1')
+Promise.resolve().then(() => console.log('2'))
+console.log('3')
+// 输出顺序：1, 3, 2
+```
+
+## 第三步：Promise 类的基础结构
+
+现在我们来实现 Promise 类的基础结构：
+
+```ts
+class MyPromise<T = unknown> {
+  // 当前状态，初始为 pending
+  private state: State = PENDING
+  // 成功的值
+  private value: T | undefined = undefined
+  // 失败的原因
+  private reason: unknown = undefined
+  // 成功回调队列（处理 pending 状态时注册的回调）
+  private onFulfilledCallbacks: (() => void)[] = []
+  // 失败回调队列
+  private onRejectedCallbacks: (() => void)[] = []
+
+  constructor(executor: Executor<T>) {
+    // resolve 函数：将状态从 pending 改为 fulfilled
+    const resolve: Resolve<T> = value => {
+      // 状态只能改变一次
+      if (this.state !== PENDING) {
+        return
+      }
+      this.state = FULFILLED
+      this.value = value as T
+      // 执行所有成功回调
+      this.onFulfilledCallbacks.forEach(fn => fn())
+    }
+
+    // reject 函数：将状态从 pending 改为 rejected
+    const reject: Reject = reason => {
+      if (this.state !== PENDING) {
+        return
+      }
+      this.state = REJECTED
+      this.reason = reason
+      // 执行所有失败回调
+      this.onRejectedCallbacks.forEach(fn => fn())
+    }
+
+    // 执行 executor，捕获同步错误
+    try {
+      executor(resolve, reject)
+    } catch (e) {
+      reject(e)
+    }
+  }
+}
+```
+
+**关键点解析：**
+
+1. **状态锁定**：`if (this.state !== PENDING) return` 确保状态只能改变一次
+2. **回调队列**：当 Promise 还在 `pending` 状态时，`then` 注册的回调会被存入队列，等状态改变后执行
+3. **错误捕获**：executor 中的同步错误会被捕获并 reject
+
+## 第四步：实现 then 方法
+
+`then` 是 Promise 最核心的方法，也是最复杂的部分：
+
+```ts
+class MyPromise<T = unknown> {
+  // ... 其他代码
+
+  then<R1 = T, R2 = never>(onFulfilled?: OnFulfilled<T, R1>, onRejected?: OnRejected<R2>): MyPromise<R1 | R2> {
+    // 2.2.1: onFulfilled 和 onRejected 都是可选参数
+    // 2.2.7.3 & 2.2.7.4: 如果不是函数，实现值穿透
+    // 值穿透：直接返回值
+    const realOnFulfilled: OnFulfilled<T, R1> = typeof onFulfilled === 'function' ? onFulfilled : v => v as unknown as R1
+
+    // 错误穿透：继续抛出
+    const realOnRejected: OnRejected<R2> =
+      typeof onRejected === 'function'
+        ? onRejected
+        : e => {
+            throw e
+          }
+
+    // 2.2.7: then 必须返回一个新的 Promise
+    const promise2 = new MyPromise<R1 | R2>((resolve, reject) => {
+      // 成功回调的微任务包装
+      const fulfilledMicrotask = () => {
+        nextTick(() => {
+          try {
+            const x = realOnFulfilled!(this.value as T)
+            // 使用 Promise Resolution Procedure 处理返回值
+            resolvePromise(promise2, x, resolve, reject)
+          } catch (e) {
+            reject(e)
+          }
+        })
+      }
+
+      // 失败回调的微任务包装
+      const rejectedMicrotask = () => {
+        nextTick(() => {
+          try {
+            const x = realOnRejected!(this.reason)
+            resolvePromise(promise2, x, resolve, reject)
+          } catch (e) {
+            reject(e)
+          }
+        })
+      }
+
+      // 根据当前状态决定如何处理
+      if (this.state === FULFILLED) {
+        // 已完成：直接执行成功回调
+        fulfilledMicrotask()
+      } else if (this.state === REJECTED) {
+        // 已拒绝：直接执行失败回调
+        rejectedMicrotask()
+      } else {
+        // pending 状态：将回调存入队列，等待状态改变
+        this.onFulfilledCallbacks.push(fulfilledMicrotask)
+        this.onRejectedCallbacks.push(rejectedMicrotask)
+      }
+    })
+
+    return promise2
+  }
+}
+```
+
+**then 方法的核心逻辑：**
+
+1. **值穿透**：如果 `onFulfilled` 不是函数，值会直接传递给下一个 `then`
+2. **错误穿透**：如果 `onRejected` 不是函数，错误会继续向下传递
+3. **返回新 Promise**：这是链式调用的基础
+4. **微任务执行**：回调必须在微任务中执行
+5. **状态判断**：根据当前状态决定立即执行还是存入队列
+
+## 第五步：Promise Resolution Procedure
+
+这是规范中最复杂的部分（规范 2.3），定义了如何处理 `then` 回调的返回值：
+
+```ts
+const resolvePromise = <T>(promise2: MyPromise<T>, x: unknown, resolve: Resolve<T>, reject: Reject) => {
+  // 2.3.1: 如果 promise2 和 x 指向同一对象，以 TypeError 为据因拒绝
+  // 防止循环引用导致死循环
+  if (promise2 === x) {
+    return reject(new TypeError('Chaining cycle detected for promise'))
+  }
+
+  // 2.3.3: 如果 x 是对象或函数（可能是 thenable）
+  if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
+    // 2.3.3.3.3: 确保 resolve 和 reject 只被调用一次
+    let called = false
+
+    try {
+      // 2.3.3.1: 把 x.then 赋值给 then
+      const then = (x as { then?: unknown }).then
+
+      // 2.3.3.3: 如果 then 是函数，说明 x 是 thenable
+      if (typeof then === 'function') {
+        then.call(
+          x,
+          // 2.3.3.3.1: 成功回调 resolvePromise
+          (y: unknown) => {
+            if (called) {
+              return
+            }
+            called = true
+            // 递归解析，因为 y 可能还是一个 Promise
+            resolvePromise(promise2, y, resolve, reject)
+          },
+          // 2.3.3.3.2: 失败回调 rejectPromise
+          (r: unknown) => {
+            if (called) {
+              return
+            }
+            called = true
+            reject(r)
+          }
+        )
+      } else {
+        // 2.3.3.4: 如果 then 不是函数，以 x 为参数 resolve
+        resolve(x as T)
+      }
+    } catch (e) {
+      // 2.3.3.2 & 2.3.3.3.4: 如果取 then 或调用 then 时抛出异常
+      if (called) {
+        return
+      }
+      called = true
+      reject(e)
+    }
+  } else {
+    // 2.3.4: 如果 x 不是对象或函数，以 x 为参数 resolve
+    resolve(x as T)
+  }
+}
+```
+
+**为什么需要这么复杂的处理？**
+
+1. **循环引用检测**：防止 `p.then(() => p)` 导致死循环
+2. **thenable 支持**：不仅支持原生 Promise，还支持任何有 `then` 方法的对象
+3. **递归解析**：`then` 回调返回的 Promise 可能还会返回 Promise，需要递归解析
+4. **只调用一次**：`called` 标志确保 resolve/reject 只被调用一次，防止恶意 thenable
+
+**举个例子理解递归解析：**
+
+```ts
+Promise.resolve(1)
+  .then(() => {
+    return new Promise(resolve => {
+      resolve(
+        new Promise(resolve => {
+          resolve(42)
+        })
+      )
+    })
+  })
+  .then(value => {
+    console.log(value) // 42，不是 Promise 对象
+  })
+```
+
+## 第六步：实现 catch 和 finally
+
+有了 `then`，`catch` 和 `finally` 就很简单了：
+
+```ts
+class MyPromise<T = unknown> {
+  // ... 其他代码
+
+  // catch 就是只处理失败的 then
+  catch<R = never>(onRejected?: OnRejected<R>): MyPromise<T | R> {
+    return this.then(null, onRejected)
+  }
+
+  // finally 无论成功失败都会执行，且不改变值
+  finally(onFinally?: (() => void) | null): MyPromise<T> {
+    return this.then(
+      value => {
+        // 等待 onFinally 执行完成后，返回原值
+        return MyPromise.resolve(onFinally?.()).then(() => value)
+      },
+      reason => {
+        // 等待 onFinally 执行完成后，继续抛出原错误
+        return MyPromise.resolve(onFinally?.()).then(() => {
+          throw reason
+        })
+      }
+    )
+  }
+}
+```
+
+**finally 的特点：**
+
+- 不接收任何参数
+- 不改变 Promise 的值（成功值或失败原因会穿透）
+- 如果 `onFinally` 返回 Promise，会等待其完成
+
+## 第七步：静态方法 resolve 和 reject
+
+```ts
+class MyPromise<T = unknown> {
+  // ... 其他代码
+
+  static resolve<T>(value?: T | PromiseLike<T>): MyPromise<T> {
+    // 如果已经是 MyPromise 实例，直接返回
+    if (value instanceof MyPromise) {
+      return value
+    }
+    // 否则创建一个新的已完成的 Promise
+    return new MyPromise<T>(resolve => resolve(value as T))
+  }
+
+  static reject<T = never>(reason?: unknown): MyPromise<T> {
+    // 创建一个已拒绝的 Promise
+    return new MyPromise<T>((_, reject) => reject(reason))
+  }
+}
+```
+
+## 完整代码
+
+```ts
+const PENDING = 'pending'
+const FULFILLED = 'fulfilled'
+const REJECTED = 'rejected'
+
+type State = typeof PENDING | typeof FULFILLED | typeof REJECTED
+type Resolve<T> = (value: T | PromiseLike<T>) => void
+type Reject = (reason?: unknown) => void
+type Executor<T> = (resolve: Resolve<T>, reject: Reject) => void
+type OnFulfilled<T, R> = ((value: T) => R | PromiseLike<R>) | null | undefined
+type OnRejected<R> = ((reason: unknown) => R | PromiseLike<R>) | null | undefined
+
+const nextTick = (fn: () => void) => {
+  if (typeof queueMicrotask === 'function') {
+    queueMicrotask(fn)
+  } else if (typeof process !== 'undefined' && typeof process.nextTick === 'function') {
+    process.nextTick(fn)
+  } else {
+    setTimeout(fn, 0)
+  }
+}
+
+const resolvePromise = <T>(promise2: MyPromise<T>, x: unknown, resolve: Resolve<T>, reject: Reject) => {
+  if (promise2 === x) {
+    return reject(new TypeError('Chaining cycle detected for promise'))
+  }
+
+  if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
+    let called = false
+    try {
+      const then = (x as { then?: unknown }).then
+
+      if (typeof then === 'function') {
+        then.call(
+          x,
+          (y: unknown) => {
+            if (called) {
+              return
+            }
+            called = true
+            resolvePromise(promise2, y, resolve, reject)
+          },
+          (r: unknown) => {
+            if (called) {
+              return
+            }
+            called = true
+            reject(r)
+          }
+        )
+      } else {
+        resolve(x as T)
+      }
+    } catch (e) {
+      if (called) {
+        return
+      }
+      called = true
+      reject(e)
+    }
+  } else {
+    resolve(x as T)
+  }
+}
+
+export default class MyPromise<T = unknown> {
+  private state: State = PENDING
+  private value: T | undefined = undefined
+  private reason: unknown = undefined
+  private onFulfilledCallbacks: (() => void)[] = []
+  private onRejectedCallbacks: (() => void)[] = []
+
+  constructor(executor: Executor<T>) {
+    const resolve: Resolve<T> = value => {
+      if (this.state !== PENDING) {
+        return
+      }
+      this.state = FULFILLED
+      this.value = value as T
+      this.onFulfilledCallbacks.forEach(fn => fn())
+    }
+
+    const reject: Reject = reason => {
+      if (this.state !== PENDING) {
+        return
+      }
+      this.state = REJECTED
+      this.reason = reason
+      this.onRejectedCallbacks.forEach(fn => fn())
+    }
+
+    try {
+      executor(resolve, reject)
+    } catch (e) {
+      reject(e)
+    }
+  }
+
+  then<R1 = T, R2 = never>(onFulfilled?: OnFulfilled<T, R1>, onRejected?: OnRejected<R2>): MyPromise<R1 | R2> {
+    const realOnFulfilled: OnFulfilled<T, R1> = typeof onFulfilled === 'function' ? onFulfilled : v => v as unknown as R1
+    const realOnRejected: OnRejected<R2> =
+      typeof onRejected === 'function'
+        ? onRejected
+        : e => {
+            throw e
+          }
+
+    const promise2 = new MyPromise<R1 | R2>((resolve, reject) => {
+      const fulfilledMicrotask = () => {
+        nextTick(() => {
+          try {
+            const x = realOnFulfilled!(this.value as T)
+            resolvePromise(promise2, x, resolve, reject)
+          } catch (e) {
+            reject(e)
+          }
+        })
+      }
+
+      const rejectedMicrotask = () => {
+        nextTick(() => {
+          try {
+            const x = realOnRejected!(this.reason)
+            resolvePromise(promise2, x, resolve, reject)
+          } catch (e) {
+            reject(e)
+          }
+        })
+      }
+
+      if (this.state === FULFILLED) {
+        fulfilledMicrotask()
+      } else if (this.state === REJECTED) {
+        rejectedMicrotask()
+      } else {
+        this.onFulfilledCallbacks.push(fulfilledMicrotask)
+        this.onRejectedCallbacks.push(rejectedMicrotask)
+      }
+    })
+
+    return promise2
+  }
+
+  catch<R = never>(onRejected?: OnRejected<R>): MyPromise<T | R> {
+    return this.then(null, onRejected)
+  }
+
+  finally(onFinally?: (() => void) | null): MyPromise<T> {
+    return this.then(
+      value => MyPromise.resolve(onFinally?.()).then(() => value),
+      reason =>
+        MyPromise.resolve(onFinally?.()).then(() => {
+          throw reason
+        })
+    )
+  }
+
+  static resolve<T>(value?: T | PromiseLike<T>): MyPromise<T> {
+    if (value instanceof MyPromise) {
+      return value
+    }
+    return new MyPromise<T>(resolve => resolve(value as T))
+  }
+
+  static reject<T = never>(reason?: unknown): MyPromise<T> {
+    return new MyPromise<T>((_, reject) => reject(reason))
+  }
+}
+```
+
+## 测试验证
+
+可以使用 [promises-aplus-tests](https://github.com/promises-aplus/promises-tests) 来验证实现是否符合规范：
+
+```ts
+// adapter.ts
+import MyPromise from '.'
+
+const resolved = MyPromise.resolve
+const rejected = MyPromise.reject
+const deferred = () => {
+  const result: {
+    promise?: MyPromise<unknown>
+    resolve?: (value: unknown) => void
+    reject?: (reason: unknown) => void
+  } = {}
+
+  result.promise = new MyPromise((resolve, reject) => {
+    result.resolve = resolve
+    result.reject = reject
+  })
+
+  return result
+}
+
+export default {
+  resolved,
+  rejected,
+  deferred,
+}
+```
+
+```ts
+// test.ts
+import promisesAplusTests from 'promises-aplus-tests'
+
+import adapter from './adapter'
+
+// 运行 Promises/A+ 规范测试套件
+promisesAplusTests(adapter, (err: Error | null) => {
+  if (err) {
+    console.error('Promises/A+ 测试失败:')
+    console.error(err)
+  } else {
+    console.log('Promises/A+ 测试通过')
+  }
+})
+```
+
+运行测试，872 个测试用例全部通过：
+
+![Promises/A+ 测试结果](https://tuchuang.coder-sunshine.top/images/20260112145652285.png)
+
+## 总结
+
+实现 Promise A+ 规范的核心要点：
+
+1. **状态机**：三种状态，单向转换，不可逆
+2. **微任务**：回调必须异步执行，保证执行顺序
+3. **链式调用**：`then` 返回新 Promise，支持值穿透和错误穿透
+4. **Resolution Procedure**：正确处理 thenable，递归解析，防止循环引用
+5. **错误处理**：executor 和回调中的错误都要捕获
+
+理解了这些核心概念，就真正掌握了 Promise 的工作原理。

@@ -1,0 +1,452 @@
+---
+title: Promise
+description: JavaScript Promise 异步编程详解
+---
+
+import { Badge } from '@astrojs/starlight/components'
+
+## 什么是 Promise
+
+Promise 是 JavaScript 中处理异步操作的一种方式，它代表一个异步操作的最终完成（或失败）及其结果值。
+
+## Promise 的三种状态
+
+```typescript
+const promiseState = {
+  PENDING: 'pending', // 初始状态，既没有被兑现，也没有被拒绝
+  FULFILLED: 'fulfilled', // 操作成功完成
+  REJECTED: 'rejected', // 操作失败
+} as const
+```
+
+状态特点：
+
+- 状态只能从 `pending` 变为 `fulfilled` 或 `rejected`
+- 状态一旦改变，就不可逆转
+
+## 基本用法
+
+```typescript
+const promise = new Promise((resolve, reject) => {
+  // 异步操作
+  setTimeout(() => {
+    const success = true
+    if (success) {
+      resolve('操作成功')
+    } else {
+      reject('操作失败')
+    }
+  }, 1000)
+})
+
+promise.then(result => console.log(result)).catch(error => console.error(error))
+```
+
+## 实例方法
+
+### then()
+
+`then()` 方法接收两个可选参数：成功回调和失败回调。
+
+```typescript
+promise.then(
+  value => {
+    // 处理成功的情况
+    console.log('成功:', value)
+  },
+  reason => {
+    // 处理失败的情况
+    console.log('失败:', reason)
+  }
+)
+```
+
+### catch()
+
+`catch()` 是 `then(null, onRejected)` 的语法糖。
+
+```typescript
+promise.catch(error => {
+  console.error('捕获错误:', error)
+})
+
+// 等价于
+promise.then(null, error => {
+  console.error('捕获错误:', error)
+})
+```
+
+### finally()
+
+`finally()` 无论成功或失败都会执行，且不接收参数，会将值穿透给下一个链式调用。
+
+```typescript
+promise
+  .then(res => console.log(res))
+  .catch(err => console.error(err))
+  .finally(() => {
+    console.log('无论成功失败都会执行')
+  })
+```
+
+## 静态方法
+
+### Promise.resolve()
+
+将值包装成一个已解决的 Promise。
+
+```typescript
+// 普通值
+Promise.resolve(123).then(res => console.log(res)) // 123
+
+// 如果传入的是 Promise，则直接返回
+Promise.resolve(new Promise(resolve => resolve(789))).then(res => console.log(res)) // 789
+
+// 如果传入的是 thenable 对象，会调用其 then 方法
+Promise.resolve({
+  then: (resolve, reject) => resolve('thenable 对象'),
+}).then(res => console.log(res)) // thenable 对象
+```
+
+### Promise.reject()
+
+返回一个以给定原因拒绝的 Promise。
+
+```typescript
+Promise.reject('错误原因').catch(err => console.log(err)) // 错误原因
+```
+
+### Promise.all()
+
+等待所有 Promise 都成功，或任意一个失败。
+
+```typescript
+Promise.all([Promise.resolve(1), Promise.resolve(2), Promise.resolve(3)]).then(results => {
+  console.log(results) // [1, 2, 3]
+})
+
+// 任意一个失败，整体就失败
+Promise.all([Promise.resolve(1), Promise.reject('失败'), Promise.resolve(3)]).catch(err => {
+  console.log(err) // '失败'
+})
+```
+
+### Promise.race()
+
+返回第一个完成（无论成功或失败）的 Promise 结果。
+
+```typescript
+Promise.race([
+  new Promise(resolve => setTimeout(() => resolve('慢'), 200)),
+  new Promise(resolve => setTimeout(() => resolve('快'), 100)),
+]).then(result => {
+  console.log(result) // '快'
+})
+```
+
+### Promise.allSettled()
+
+等待所有 Promise 都完成（无论成功或失败），返回每个 Promise 的结果。
+
+```typescript
+Promise.allSettled([Promise.resolve(1), Promise.reject('失败'), Promise.resolve(3)]).then(results => {
+  console.log(results)
+  // [
+  //   { status: 'fulfilled', value: 1 },
+  //   { status: 'rejected', reason: '失败' },
+  //   { status: 'fulfilled', value: 3 }
+  // ]
+})
+```
+
+### Promise.any()
+
+返回第一个成功的 Promise，全部失败才会 reject。
+
+```typescript
+Promise.any([Promise.reject('失败1'), Promise.resolve('成功'), Promise.reject('失败2')]).then(result => {
+  console.log(result) // '成功'
+})
+```
+
+### Promise.try() <Badge text="ES2025" />
+
+安全地执行一个可能抛出错误的函数，无论同步还是异步错误都能被捕获。
+
+```typescript
+function riskyOperation(a: number, b: number) {
+  if (b === 0) {
+    throw new Error('除数不能为 0')
+  }
+  return a / b
+}
+
+// ❌ Promise.resolve 无法捕获同步错误
+Promise.resolve(riskyOperation(1, 0)).catch(err => {
+  // 不会执行，错误已经抛出
+})
+
+// ✅ Promise.try 可以捕获同步错误
+Promise.try(() => riskyOperation(1, 0)).catch(err => {
+  console.log(err.message) // '除数不能为 0'
+})
+
+// 也支持传递参数
+Promise.try(riskyOperation, 10, 2).then(res => {
+  console.log(res) // 5
+})
+```
+
+### Promise.withResolvers() <Badge text="ES2024" />
+
+返回一个对象，包含一个新的 Promise 及其 `resolve` 和 `reject` 函数。
+
+```typescript
+// 传统写法：需要在外部声明变量
+let resolve: (value: string) => void
+let reject: (reason: any) => void
+
+const promise = new Promise<string>((res, rej) => {
+  resolve = res
+  reject = rej
+})
+
+// ✅ 使用 withResolvers 更简洁
+const { promise, resolve, reject } = Promise.withResolvers<string>()
+
+// 可以在任意地方调用 resolve/reject
+setTimeout(() => {
+  resolve('延迟完成')
+}, 1000)
+
+promise.then(res => console.log(res)) // '延迟完成'
+```
+
+常见使用场景：
+
+```typescript
+// 封装事件为 Promise
+function waitForClick(element: HTMLElement) {
+  const { promise, resolve } = Promise.withResolvers<MouseEvent>()
+  element.addEventListener('click', resolve, { once: true })
+  return promise
+}
+
+// 封装回调为 Promise
+function loadImage(src: string) {
+  const { promise, resolve, reject } = Promise.withResolvers<HTMLImageElement>()
+  const img = new Image()
+  img.onload = () => resolve(img)
+  img.onerror = reject
+  img.src = src
+  return promise
+}
+```
+
+## 链式调用
+
+Promise 支持链式调用，每个 `then()` 返回一个新的 Promise。
+
+```typescript
+Promise.resolve(1)
+  .then(value => {
+    console.log(value) // 1
+    return value + 1
+  })
+  .then(value => {
+    console.log(value) // 2
+    return value + 1
+  })
+  .then(value => {
+    console.log(value) // 3
+  })
+```
+
+### 值穿透
+
+如果 `then()` 的参数不是函数，值会穿透到下一个 `then()`。
+
+```typescript
+Promise.resolve(123)
+  .then(null) // 不是函数，值穿透
+  .then(null) // 不是函数，值穿透
+  .then(res => {
+    console.log(res) // 123
+  })
+```
+
+## 错误处理
+
+### executor 中的错误
+
+构造函数中的同步错误会被自动捕获并 reject。
+
+```typescript
+new Promise((resolve, reject) => {
+  throw new Error('同步错误')
+}).catch(err => {
+  console.log(err.message) // '同步错误'
+})
+```
+
+### 异步错误无法捕获
+
+```typescript
+new Promise((resolve, reject) => {
+  setTimeout(() => {
+    // 这个错误无法被 Promise 捕获！
+    throw new Error('异步错误')
+  }, 1000)
+}).catch(err => {
+  // 不会执行
+})
+```
+
+## 微任务队列
+
+Promise 的回调会被放入微任务队列，在当前宏任务执行完毕后立即执行。
+
+```typescript
+console.log('1')
+
+Promise.resolve().then(() => {
+  console.log('2')
+})
+
+console.log('3')
+
+// 输出顺序: 1, 3, 2
+```
+
+### 微任务实现方式
+
+```typescript
+// 不同环境下的微任务实现
+function runMicrotask(callback: () => void) {
+  if (typeof queueMicrotask === 'function') {
+    // 现代浏览器
+    queueMicrotask(callback)
+  } else if (typeof process === 'object' && typeof process.nextTick === 'function') {
+    // Node.js 环境
+    process.nextTick(callback)
+  } else if (typeof MutationObserver === 'function') {
+    // 旧版浏览器降级方案
+    const text = document.createTextNode('')
+    const observer = new MutationObserver(callback)
+    observer.observe(text, { characterData: true })
+    text.data = '1'
+  } else {
+    // 最终降级为宏任务
+    setTimeout(callback)
+  }
+}
+```
+
+## 手写 Promise
+
+完整的 Promise 实现可以参考：[MyPromise 实现](/examples-browser/promise/my-promise)
+
+核心要点：
+
+1. **状态管理**：维护 `pending`、`fulfilled`、`rejected` 三种状态
+2. **回调队列**：`pending` 状态时将回调存入队列，状态改变后执行
+3. **链式调用**：`then()` 返回新的 Promise 实例
+4. **值穿透**：非函数参数时传递原值
+5. **thenable 处理**：支持 thenable 对象的解析
+
+```typescript
+class MyPromise<T = unknown> {
+  private state: PromiseState = 'pending'
+  private result: T | undefined = undefined
+  private handlers: (() => void)[] = []
+
+  constructor(executor: (resolve: (value: T) => void, reject: (reason: any) => void) => void) {
+    try {
+      executor(this.resolve.bind(this), this.reject.bind(this))
+    } catch (error) {
+      this.reject(error)
+    }
+  }
+
+  // ... 完整实现见示例代码
+}
+```
+
+## 常见面试题
+
+### 1. Promise 输出顺序
+
+```typescript
+console.log('start')
+
+new Promise(resolve => {
+  console.log('promise1')
+  resolve('resolved')
+}).then(res => {
+  console.log(res)
+})
+
+console.log('end')
+
+// 输出: start, promise1, end, resolved
+```
+
+### 2. 多个 then 的执行顺序
+
+```typescript
+Promise.resolve()
+  .then(() => {
+    console.log(1)
+    return Promise.resolve(2)
+  })
+  .then(res => {
+    console.log(res)
+  })
+
+Promise.resolve()
+  .then(() => {
+    console.log(3)
+  })
+  .then(() => {
+    console.log(4)
+  })
+  .then(() => {
+    console.log(5)
+  })
+
+// 输出: 1, 3, 4, 2, 5
+// 注意：返回 Promise 会产生额外的微任务
+```
+
+## 最佳实践
+
+1. **始终返回 Promise**：在 `then()` 中返回值或 Promise，保持链式调用
+2. **使用 catch() 捕获错误**：在链的末尾添加 `catch()` 处理所有错误
+3. **避免嵌套 Promise**：使用链式调用代替嵌套
+4. **优先使用 async/await**：更清晰的异步代码写法
+
+```typescript
+// ❌ 不推荐：嵌套 Promise
+fetchUser().then(user => {
+  fetchPosts(user.id).then(posts => {
+    console.log(posts)
+  })
+})
+
+// ✅ 推荐：链式调用
+fetchUser()
+  .then(user => fetchPosts(user.id))
+  .then(posts => console.log(posts))
+  .catch(err => console.error(err))
+
+// ✅ 更推荐：async/await
+async function loadData() {
+  try {
+    const user = await fetchUser()
+    const posts = await fetchPosts(user.id)
+    console.log(posts)
+  } catch (err) {
+    console.error(err)
+  }
+}
+```

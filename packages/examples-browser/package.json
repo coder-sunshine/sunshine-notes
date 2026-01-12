@@ -3,5 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "description": "浏览器环境代码示例",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "test:promise": "tsx src/promise/my-promise/test.ts"
+  },
+  "dependencies": {
+    "promises-aplus-tests": "^2.1.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
 }
