@@ -1,4 +1,3 @@
-# ===== 前端框架 =====
 astrojs
 composables
 jotai
@@ -12,16 +11,12 @@ redux
 vuetify
 vuex
 zustand
-
-# ===== 后端框架 =====
 expressjs
 fastify
 mikro
 nestjs
 prisma
 typeorm
-
-# ===== 样式相关 =====
 antd
 arco
 sass
@@ -31,16 +26,19 @@ stylus
 tailwind
 tailwindcss
 unocss
-
-# ===== AI 相关 =====
+Aliyun
+aliyuncs
 chatgpt
 commitlint
 embeddings
+fangbinwei
 kiro
 langchain
 llm
+manyuanrong
 Microtask
 openai
+ossutil
 Prefixs
 seti
 vectorstore
