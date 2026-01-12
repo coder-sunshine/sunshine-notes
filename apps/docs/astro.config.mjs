@@ -15,6 +15,7 @@ export default defineConfig({
     starlight({
       title: '秘密の花园',
       components: {
+        ThemeProvider: '@/components/ThemeProvider.astro',
         LastUpdated: '@/components/LastUpdated.astro',
         Footer: '@/components/Footer.astro',
       },

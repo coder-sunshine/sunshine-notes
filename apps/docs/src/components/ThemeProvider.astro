@@ -1,0 +1,19 @@
+---
+/**
+ * 自定义主题提供者
+ * 首次访问默认深色主题，之后根据用户选择
+ */
+import StarlightThemeProvider from '@astrojs/starlight/components/ThemeProvider.astro'
+---
+
+<StarlightThemeProvider />
+
+<script is:inline>
+  // localStorage.getItem 不存在时返回 null，用户选择"自动"是空字符串
+  const storedTheme = localStorage.getItem('starlight-theme')
+  if (storedTheme === null) {
+    // 首次访问，设置为深色主题
+    localStorage.setItem('starlight-theme', 'dark')
+    document.documentElement.dataset.theme = 'dark'
+  }
+</script>
