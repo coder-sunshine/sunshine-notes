@@ -1,0 +1,33 @@
+---
+/**
+ * 自定义 Footer 组件
+ * 在 Starlight 默认 Footer 基础上添加 ICP 备案信息
+ */
+import Default from '@astrojs/starlight/components/Footer.astro'
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+<footer class='icp-footer'>
+  <a href='https://beian.miit.gov.cn/' target='_blank' rel='noopener noreferrer'> 渝ICP备2024035864号-1 </a>
+</footer>
+
+<style>
+  .icp-footer {
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--sl-color-gray-3);
+    border-top: 1px solid var(--sl-color-gray-5);
+  }
+
+  .icp-footer a {
+    color: var(--sl-color-gray-3);
+    text-decoration: none;
+  }
+
+  .icp-footer a:hover {
+    color: var(--sl-color-white);
+    text-decoration: underline;
+  }
+</style>

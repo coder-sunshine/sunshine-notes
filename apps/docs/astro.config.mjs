@@ -16,6 +16,7 @@ export default defineConfig({
       title: '秘密の花园',
       components: {
         LastUpdated: '@/components/LastUpdated.astro',
+        Footer: '@/components/Footer.astro',
       },
       locales: {
         root: {
