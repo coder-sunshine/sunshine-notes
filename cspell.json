@@ -10,6 +10,6 @@
       "addWords": true
     }
   ],
-  "ignorePaths": [".kiro", "node_modules", "dist", "build", ".astro", "pnpm-lock.yaml", "*.min.js", "*.min.css"],
+  "ignorePaths": [".claude", "node_modules", "dist", "build", ".astro", "pnpm-lock.yaml", "*.min.js", "*.min.css"],
   "ignoreRegExpList": ["\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,}\\b"]
 }

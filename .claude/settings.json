@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "mcp__Eslint-mcp__lint-files",
+      "mcp__Astro-docs-mcp__search_astro_docs",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm format:*)",
+      "Bash(pnpm spell:*)",
+      "Bash(pnpm stylelint:*)",
+      "Bash(pnpm docs:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Write(apps/docs/src/content/docs/**)",
+      "Edit(apps/docs/src/content/docs/**)"
+    ]
+  }
+}

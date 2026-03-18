@@ -67,3 +67,9 @@ Thumbs.db
 !.vscode/extensions.json
 !.vscode/settings.json
 !.vscode/tasks.json
+
+# ----------------------------------------------------------------------
+# AI 工具配置 (AI Tools)
+# ----------------------------------------------------------------------
+# Claude Code 本地设置（个人偏好，不提交）
+.claude/settings.local.json

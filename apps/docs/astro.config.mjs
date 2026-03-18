@@ -47,6 +47,10 @@ export default defineConfig({
               autogenerate: { directory: 'frontend/react' },
             },
             {
+              label: 'React 源码',
+              autogenerate: { directory: 'frontend/react-source' },
+            },
+            {
               label: 'Vue',
               autogenerate: { directory: 'frontend/vue' },
             },
