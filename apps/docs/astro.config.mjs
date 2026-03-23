@@ -55,6 +55,10 @@ export default defineConfig({
               autogenerate: { directory: 'frontend/vue' },
             },
             {
+              label: 'Vue 源码',
+              autogenerate: { directory: 'frontend/vue-source' },
+            },
+            {
               label: 'CSS',
               autogenerate: { directory: 'frontend/css' },
             },

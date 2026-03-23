@@ -1,0 +1,111 @@
+---
+title: 响应式基本原理
+description: 响应式基本原理
+---
+
+## 什么是响应式系统
+
+响应式系统是 Vue 3 的核心机制，它能够自动追踪数据的变化，并在数据变化时自动执行相关的副作用函数（如组件重新渲染、计算属性更新等）。
+
+简单来说：**当数据变化时，依赖这个数据的地方会自动更新**。
+
+## Proxy vs Object.defineProperty
+
+Vue 2 使用 `Object.defineProperty` 实现响应式，Vue 3 改用 `Proxy`：
+
+**Vue 2 的局限性：**
+
+- 无法检测对象属性的新增和删除
+- 无法检测数组索引和长度的变化
+- 需要递归遍历对象的所有属性
+
+**Vue 3 的优势：**
+
+- 可以拦截对象的所有操作（get、set、has、deleteProperty 等）
+- 可以监听数组索引和长度变化
+- 惰性递归，只在访问嵌套对象时才将其转为响应式
+
+## 响应式系统的核心流程
+
+响应式系统包含三个核心概念：
+
+### 1. reactive/ref - 创建响应式数据
+
+```js
+const state = reactive({ count: 0 })
+```
+
+使用 `Proxy` 拦截对象的读取和修改操作。
+
+### 2. track - 依赖收集
+
+当读取响应式数据时（get 操作），会收集当前正在执行的副作用函数作为依赖：
+
+```js
+effect(() => {
+  console.log(state.count) // 读取 count，触发 track
+})
+```
+
+**依赖收集的数据结构：**
+
+```
+targetMap (WeakMap)
+  └─ target (Map)
+      └─ key (Set)
+          └─ effect1, effect2, ...
+```
+
+### 3. trigger - 触发更新
+
+当修改响应式数据时（set 操作），会触发所有依赖该数据的副作用函数重新执行：
+
+```js
+state.count++ // 修改 count，触发 trigger，执行所有依赖 count 的 effect
+```
+
+## effect 函数
+
+`effect` 是响应式系统的核心，它会立即执行传入的函数，并在函数执行过程中收集依赖：
+
+```js
+import { effect, reactive } from 'vue'
+
+const state = reactive({ count: 0 })
+
+effect(() => {
+  console.log('count:', state.count)
+})
+// 输出: count: 0
+
+state.count++
+// 输出: count: 1
+```
+
+**执行流程：**
+
+1. 执行 effect 函数，设置当前活跃的 effect
+2. 执行副作用函数，读取 `state.count`
+3. 触发 Proxy 的 get 拦截器，调用 track 收集依赖
+4. 修改 `state.count` 时，触发 Proxy 的 set 拦截器
+5. 调用 trigger 找到所有依赖该属性的 effect 并重新执行
+
+## 简化示例
+
+```js
+// 1. 创建响应式对象
+const state = reactive({ count: 0 })
+
+// 2. 创建副作用函数
+effect(() => {
+  // 读取 count 时会收集依赖
+  document.body.innerText = state.count
+})
+
+// 3. 修改数据，自动触发更新
+setTimeout(() => {
+  state.count++ // 页面自动更新
+}, 1000)
+```
+
+这就是 Vue 3 响应式系统的基本原理：通过 Proxy 拦截数据访问，在读取时收集依赖（track），在修改时触发更新（trigger）。

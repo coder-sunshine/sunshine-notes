@@ -86,6 +86,15 @@ export default [
     },
   },
 
+  // ==================== Vue 源码目录特殊配置 ====================
+  {
+    files: ['vue-source/**/*.{ts,js,vue}'],
+    rules: {
+      // Vue 源码开发时需要直接从 @vue/reactivity 等子包导入
+      'vue/prefer-import-from-vue': 'off',
+    },
+  },
+
   // ==================== React/JSX 配置 ====================
   // 适用于 packages/ui-react 中的 .jsx/.tsx 文件
   {
@@ -124,9 +133,9 @@ export default [
   // ==================== MDX 配置 ====================
   {
     ...pluginMdx.flat,
-    // 可选：启用代码块检查
+    // 关闭代码块检查，因为示例代码可能是不完整的片段
     processor: pluginMdx.createRemarkProcessor({
-      lintCodeBlocks: true,
+      lintCodeBlocks: false,
     }),
   },
   {
@@ -136,6 +145,8 @@ export default [
       // 代码块中的规则覆盖
       'no-var': 'error',
       'prefer-const': 'error',
+      // 允许代码片段不完整（示例代码可能只是函数的一部分）
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   },
   // MDX 文件特殊规则

@@ -19,7 +19,8 @@
     "commit": "czg",
     "docs:dev": "pnpm --filter docs dev",
     "docs:build": "pnpm --filter docs build",
-    "docs:preview": "pnpm --filter docs preview"
+    "docs:preview": "pnpm --filter docs preview",
+    "vue-source-dev": "node vue-source/scripts/dev.js"
   },
   "keywords": [],
   "author": {
@@ -38,6 +39,7 @@
     "cspell": "^9.4.0",
     "cz-git": "^1.12.0",
     "czg": "^1.12.0",
+    "esbuild-plugin-polyfill-node": "^0.3.0",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-jsx-a11y": "^6.10.2",
