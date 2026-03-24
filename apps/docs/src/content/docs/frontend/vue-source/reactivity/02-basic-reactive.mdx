@@ -3,6 +3,8 @@ title: 最基本的 reactive 实现
 description: 使用 Proxy 实现最基本的响应式对象
 ---
 
+import ExampleCode from '@/components/ExampleCode.astro'
+
 ## 实现目标
 
 实现一个最简单的 `reactive` 函数，能够：
@@ -59,13 +61,6 @@ export function trigger(target: object, key: unknown) {
 }
 ```
 
-### 3. 导出 API
-
-```ts
-// vue-source/packages/reactivity/src/index.ts
-export { reactive } from './reactive'
-```
-
 ## 关键点解析
 
 ### 为什么使用 Reflect？
@@ -90,6 +85,8 @@ get(target, key) {
 2. `Reflect` 可以正确处理 `this` 指向问题
 3. 与 Proxy 的 trap 方法一一对应，语义更清晰
 
+可以阅读 [Reflect 原理笔记](/frontend/javascript/reflect/) 结合理解。
+
 ### 函数重载
 
 ```ts
@@ -105,58 +102,7 @@ export function reactive(target: object) {
 
 创建一个简单的 HTML 文件测试：
 
-```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>reactive 测试</title>
-  </head>
-  <body>
-    <script type="module">
-      import { reactive } from '../dist/reactivity.esm.js'
-
-      const raw = { count: 1 }
-      const proxyRaw = reactive(raw)
-
-      // 读取属性，触发 track
-      console.log(proxyRaw.count)
-      // 输出: target {"count":1} 依赖收集：count属性被读取了
-      // 输出: 1
-
-      // 修改属性，触发 trigger
-      proxyRaw.count++
-      // 输出: target {"count":1} 依赖收集：count属性被读取了
-      // 输出: target {"count":2} 触发更新：count属性被修改了
-    </script>
-  </body>
-</html>
-```
-
-## 运行测试
-
-1. 构建 reactivity 包：
-
-```bash
-pnpm vue-source-dev reactivity
-```
-
-2. 在浏览器中打开 `vue-source/packages/reactivity/examples/1.html`
-
-3. 打开控制台查看输出
-
-## 当前实现的局限性
-
-这个版本只是最基础的框架，还有很多问题：
-
-1. **没有真正的依赖收集**：`track` 只是打印日志，没有存储依赖关系
-2. **没有真正的触发更新**：`trigger` 只是打印日志，没有执行副作用函数
-3. **缺少 effect 函数**：无法注册副作用函数
-4. **不支持嵌套对象**：嵌套对象不会被转为响应式
-5. **没有处理数组**：数组的特殊方法（push、pop 等）需要特殊处理
-6. **没有缓存 Proxy**：重复调用 `reactive(obj)` 会创建多个 Proxy
-
-下一步将实现真正的依赖收集和 effect 函数。
+<ExampleCode file='1.html' source='vue-source' pkg='reactivity' />
 
 ## 小结
 

@@ -1,7 +1,7 @@
 ---
 /**
  * 示例代码展示组件
- * 用于在文档中引用 packages/examples-* 中的代码文件
+ * 用于在文档中引用示例目录中的代码文件
  *
  * @example
  * // 从 examples-browser 读取（默认）
@@ -9,6 +9,12 @@
  *
  * // 从 examples-node 读取
  * <ExampleCode file="express/server.ts" source="node" />
+ *
+ * // 从 vue-source 的 examples 目录读取
+ * <ExampleCode file="1.html" source="vue-source" pkg="reactivity" />
+ *
+ * // 从 vue-source 的 src 目录读取
+ * <ExampleCode file="reactive.ts" source="vue-source" pkg="reactivity" dir="src" />
  *
  * // 高亮指定行
  * <ExampleCode file="demo.js" mark={[3, '5-8', { range: '10-12', label: '重点' }]} />
@@ -20,28 +26,77 @@ import type { ComponentProps } from 'astro/types'
 import { Code } from '@astrojs/starlight/components'
 
 /** 支持的示例来源类型，新增包时需在此添加 */
-type SourceType = 'browser' | 'node'
+type SourceType = 'browser' | 'node' | 'vue-source'
+type SourceDir = 'src' | 'examples'
 
 /** 扩展 Code 组件的 Props，添加示例文件相关属性 */
 interface Props extends Omit<ComponentProps<typeof Code>, 'code'> {
-  /** 文件路径，相对于 examples-{source}/src/ */
+  /** 文件路径，相对于对应来源的根目录 */
   file: string
-  /** 示例来源：browser | node，默认 browser */
+  /** 示例来源：browser | node | vue-source，默认 browser */
   source?: SourceType
+  /** 当 source 为 vue-source 时，对应的包名 */
+  pkg?: string
+  /** 当 source 为 vue-source 时，指定读取 src 或 examples 目录 */
+  dir?: SourceDir
 }
 
-const { file, source = 'browser', lang, title, ...restProps } = Astro.props
+const { file, source = 'browser', pkg, dir = 'examples', lang, title, ...restProps } = Astro.props
 
-// 统一加载所有 examples-* 包的文件，新增包时无需修改此处
-const allExamples = import.meta.glob('../../../../packages/examples-*/src/**/*', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-})
+// 统一加载所有示例文件，新增来源时只需补充这里和路径解析逻辑
+const allExamples = {
+  ...import.meta.glob('../../../../packages/examples-browser/src/**/*', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+  ...import.meta.glob('../../../../packages/examples-node/src/**/*', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+  ...import.meta.glob('../../../../vue-source/packages/*/src/**/*', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+  ...import.meta.glob('../../../../vue-source/packages/*/examples/**/*', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }),
+}
+
+const resolveBasePath = () => {
+  if (source === 'browser') {
+    return `../../../../packages/examples-browser/src/${file}`
+  }
+
+  if (source === 'node') {
+    return `../../../../packages/examples-node/src/${file}`
+  }
+
+  if (source === 'vue-source') {
+    if (!pkg) {
+      return ''
+    }
+
+    return `../../../../vue-source/packages/${pkg}/${dir}/${file}`
+  }
+
+  return ''
+}
 
 // 根据 source 构建路径并查找文件
-const basePath = `../../../../packages/examples-${source}/src/${file}`
-const code = (allExamples[basePath] as string) || `// 文件未找到: ${file}`
+const basePath = resolveBasePath()
+
+const code = (() => {
+  if (source === 'vue-source' && !pkg) {
+    return '// source 为 vue-source 时，必须传入 pkg 参数'
+  }
+
+  return (allExamples[basePath] as string) || `// 文件未找到: ${basePath || file}`
+})()
 
 // 扩展名到语言的映射
 const extLangMap: Record<string, string> = {

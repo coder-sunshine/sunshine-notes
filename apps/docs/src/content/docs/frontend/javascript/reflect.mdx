@@ -1,0 +1,175 @@
+---
+title: Reflect
+description: 通过 Proxy 与 getter 的例子理解 Reflect.get 和 receiver 的作用
+---
+
+## 什么是 Reflect
+
+`Reflect` 是 JavaScript 提供的一个内置对象，用来完成对象的一些基本操作，比如：
+
+- `Reflect.get()`：读取属性
+- `Reflect.set()`：设置属性
+- `Reflect.has()`：判断属性是否存在
+- `Reflect.deleteProperty()`：删除属性
+
+很多时候，`Reflect` 会和 `Proxy` 搭配使用。
+
+原因是：`Proxy` 负责拦截，`Reflect` 负责把默认行为正确地执行下去。
+
+## 为什么在 Proxy 里经常配合 Reflect 使用
+
+如果我们在 `Proxy` 的 `get` 拦截器里直接写 `target[key]`，看起来像是在“读取属性”，但它其实会丢掉一部分原始语义。
+
+最典型的场景就是：`getter` 中的 `this` 指向可能不对。
+
+下面通过一个例子来看。
+
+## 问题示例：直接返回 target[key]
+
+```js
+const obj = {
+  a: 1,
+  b: 2,
+  get sum() {
+    console.log('this === obj', this === obj)
+    return this.a + this.b
+  },
+}
+
+const proxy = new Proxy(obj, {
+  get(target, key) {
+    // 这里只会先拦截到 sum
+    console.log('key', key)
+    return target[key]
+  },
+})
+
+console.log(proxy.sum)
+```
+
+输出结果大致如下：
+
+```js
+key sum
+this === obj true
+3
+```
+
+### 为什么这里只打印了 `sum`
+
+当我们执行 `proxy.sum` 时，确实先进入了 `Proxy` 的 `get` 拦截器。
+
+但是拦截器内部直接返回了 `target[key]`，也就是直接从原对象 `obj` 上取值。由于 `sum` 是一个 `getter`，它会立刻执行，而此时 `getter` 内部的 `this` 指向的是 `obj`，不是 `proxy`。
+
+所以后续访问的 `this.a` 和 `this.b`，本质上相当于：
+
+```js
+obj.a
+obj.b
+```
+
+既然访问的是原对象，自然就不会再次触发代理对象的 `get` 拦截了。
+
+## 正确做法：使用 Reflect.get
+
+```js
+const obj = {
+  a: 1,
+  b: 2,
+  get sum() {
+    console.log('this === proxy', this === proxy)
+    return this.a + this.b
+  },
+}
+
+const proxy = new Proxy(obj, {
+  get(target, key, receiver) {
+    console.log('receiver === proxy', receiver === proxy)
+    console.log('key', key)
+    return Reflect.get(target, key, receiver)
+  },
+  set(target, key, value, receiver) {
+    return Reflect.set(target, key, value, receiver)
+  },
+})
+
+console.log(proxy.sum)
+```
+
+输出结果大致如下：
+
+```js
+receiver === proxy true
+key sum
+this === proxy true
+receiver === proxy true
+key a
+receiver === proxy true
+key b
+3
+```
+
+## Reflect.get 做了什么
+
+关键在这一句：
+
+```js
+Reflect.get(target, key, receiver)
+```
+
+它不只是“取值”，还会把 `receiver` 作为读取时的接收者传进去。
+
+对于普通属性，这和 `target[key]` 看起来差别不大；但对于 `getter` 属性，差别就非常关键：
+
+- `target[key]`：`getter` 内部的 `this` 会指向 `target`
+- `Reflect.get(target, key, receiver)`：`getter` 内部的 `this` 会指向 `receiver`
+
+在 `Proxy` 的 `get` 拦截器里，第三个参数 `receiver` 通常就是“当前正在访问属性的那个代理对象”。
+
+所以这里的本质就是：
+
+- 访问 `proxy.sum`
+- 进入 `get` 拦截器
+- 用 `Reflect.get(target, key, receiver)` 执行默认读取逻辑
+- 让 `sum` 的 `getter` 中的 `this` 指向 `proxy`
+- 后续的 `this.a`、`this.b` 会再次经过代理拦截
+
+## receiver 的作用
+
+可以把 `receiver` 简单理解为：
+
+> 这次属性访问最终应该以谁作为 `this`
+
+在很多基础场景中，我们不太容易感受到它的重要性，但一旦遇到下面这些场景，`receiver` 就很关键：
+
+- 对象中定义了 `getter` / `setter`
+- 代理对象参与了原型链访问
+- 希望代理行为和原生对象行为尽量保持一致
+
+因此，在 `Proxy` 中编写 `get` / `set` 拦截器时，通常推荐这样写：
+
+```js
+const proxy = new Proxy(target, {
+  get(target, key, receiver) {
+    return Reflect.get(target, key, receiver)
+  },
+  set(target, key, value, receiver) {
+    return Reflect.set(target, key, value, receiver)
+  },
+})
+```
+
+这样做的好处是：
+
+- 语义更接近 JavaScript 的默认行为
+- 不容易破坏 `getter` / `setter` 中的 `this`
+- 对原型链场景更安全
+- 代码表达也更清晰：`Proxy` 负责拦截，`Reflect` 负责执行默认操作
+
+## 一句话总结
+
+在 `Proxy` 的 `get` 拦截中：
+
+- 如果直接写 `target[key]`，`getter` 里的 `this` 往往会变成原对象
+- 如果使用 `Reflect.get(target, key, receiver)`，可以把 `this` 正确指向代理对象
+- 这样访问 `getter` 内部的其他属性时，才能继续被代理拦截

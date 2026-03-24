@@ -10,10 +10,17 @@
       import { reactive } from '../dist/reactivity.esm.js'
 
       const raw = { count: 1 }
-
       const proxyRaw = reactive(raw)
 
+      // 读取属性，触发 track
+      console.log(proxyRaw.count)
+      // 输出: target {"count":1} 依赖收集：count属性被读取了
+      // 输出: 1
+
+      // 修改属性，触发 trigger
       proxyRaw.count++
+      // 输出: target {"count":1} 依赖收集：count属性被读取了
+      // 输出: target {"count":2} 触发更新：count属性被修改了
     </script>
   </body>
 </html>
