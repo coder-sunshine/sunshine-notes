@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>boundary-reactive</title>
+  </head>
+  <body>
+    <script type="module">
+      import { reactive } from '../dist/reactivity.esm.js'
+
+      const obj = { count: 1 }
+
+      const state1 = reactive(obj)
+      console.log(state1)
+    </script>
+  </body>
+</html>

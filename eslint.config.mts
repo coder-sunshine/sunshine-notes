@@ -92,6 +92,7 @@ export default [
     rules: {
       // Vue 源码开发时需要直接从 @vue/reactivity 等子包导入
       'vue/prefer-import-from-vue': 'off',
+      '@typescript-eslint/no-unsafe-function-type': 'off',
     },
   },
 

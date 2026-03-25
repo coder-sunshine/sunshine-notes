@@ -1,0 +1,27 @@
+---
+title: 边界问题处理
+description: 在实现 reactive 的时候，一些边界问题的处理
+---
+
+## 判断传入的参数是否是对象
+
+虽然有TS帮我们做参数限定，但是这只是在编译时，编译之后的js还是需要我们判断传入的参数是否是一个对象
+
+```ts
+export function reactive<T extends object>(target: T): T
+export function reactive(target: object) {
+  // 判断传入的是否是对象
+  if (!isObject(target)) {
+    console.log('传入的必须是一个对象')
+    return target
+  }
+
+  // ......
+}
+```
+
+## 如果对象已经被代理过，无需再次代理
+
+如果再此被代理，同一个原始对象，就生成了两个不同的Proxy对象，而且两个Proxy对象如果去比较的话，还是不相等的
+
+##
