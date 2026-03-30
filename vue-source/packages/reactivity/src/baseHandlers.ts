@@ -1,4 +1,4 @@
-import { isObject } from '@vue/shared'
+import { hasChanged, hasOwn, isObject } from '@vue/shared'
 
 import { ITERATE_KEY, track, trigger } from './effect'
 import { TrackOpTypes, TriggerOpTypes } from './operations'
@@ -24,9 +24,19 @@ function get(target: object, key: string | symbol, receiver: object): any {
   return result
 }
 
-function set(target: object, key: string | symbol, value: unknown, receiver: object): boolean {
-  // todo: 触发更新
-  trigger(target, TriggerOpTypes.SET, key)
+function set(target: Record<string | symbol, unknown>, key: string | symbol, value: unknown, receiver: object): boolean {
+  // 判断对象是否有这个属性
+  const hadKey = hasOwn(target, key)
+
+  const oldValue = target[key]
+
+  // 原来就没这个属性，那说明是新增
+  if (!hadKey) {
+    trigger(target, TriggerOpTypes.ADD, key)
+  } else if (hasChanged(value, oldValue)) {
+    trigger(target, TriggerOpTypes.SET, key)
+  }
+
   // 设置对象的相应属性值
   const result = Reflect.set(target, key, value, receiver)
   return result
@@ -44,9 +54,22 @@ function ownKeys(target: object): (string | symbol)[] {
   return Reflect.ownKeys(target)
 }
 
+function deleteProperty(target: Record<string | symbol, unknown>, key: string | symbol) {
+  // 判断对象是否有这个属性,不然删除就没有意义
+  const hadKey = hasOwn(target, key)
+  // 删除是否成功的结果
+  const result = Reflect.deleteProperty(target, key)
+  // 对象有这个属性，并且删除成功才会触发更新
+  if (hadKey && result) {
+    trigger(target, TriggerOpTypes.DELETE, key)
+  }
+  return result
+}
+
 export const mutableHandlers: ProxyHandler<object> = {
   get,
   set,
   has,
   ownKeys,
+  deleteProperty,
 }

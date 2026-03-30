@@ -776,3 +776,106 @@ export const mutableHandlers: ProxyHandler<object> = {
 ```
 
 ![20260330171147](https://tuchuang.coder-sunshine.top/images/20260330171147.png)
+
+## 新增，修改，删除不同动作的处理
+
+`新增`和`修改`之前只是做了简单的处理，那么`到底是新增还是修改的动作`，需要`区分`出来，因为对于读的操作影响是不一样的。
+
+同时，如果修改的值确实有`变化`的时候，才触发`trigger`函数，不然触发的就毫无意义，这个其实就判断一下新旧值是否一样就行了。
+
+:::note
+在判断新旧值是否一样的时候，最好使用`Object.is`函数去进行判断，而不是使用===或者!==符号去进行判断，因为有一些特殊的情况需要处理，比如NaN和NaN是相等的，+0和-0是不相等的
+:::
+
+```ts
+// vue-source/packages/shared/src/general.ts
+// 通过Object.is比较可以避免出现一些特殊情况
+// 比如NaN和NaN是相等的，+0和-0是不相等的
+export const hasChanged = (value: any, oldValue: any): boolean => !Object.is(value, oldValue)
+
+const hasOwnProperty = Object.prototype.hasOwnProperty
+export const hasOwn = (val: object, key: string | symbol): key is keyof typeof val => hasOwnProperty.call(val, key)
+```
+
+这里还添加了 `hasOwn`，用于判断是`新增`还是`修改`
+
+```ts
+// vue-source/packages/reactivity/src/baseHandlers.ts
+import { hasChanged, hasOwn, isObject } from '@vue/shared'
+
+function set(target: Record<string | symbol, unknown>, key: string | symbol, value: unknown, receiver: object): boolean {
+  // 判断对象是否有这个属性
+  const hadKey = hasOwn(target, key)
+
+  const oldValue = target[key]
+
+  // 原来就没这个属性，那说明是新增
+  if (!hadKey) {
+    trigger(target, TriggerOpTypes.ADD, key)
+  } else if (hasChanged(value, oldValue)) {
+    trigger(target, TriggerOpTypes.SET, key)
+  }
+
+  // 设置对象的相应属性值
+  const result = Reflect.set(target, key, value, receiver)
+  return result
+}
+
+function deleteProperty(target: Record<string | symbol, unknown>, key: string | symbol) {
+  // 判断对象是否有这个属性,不然删除就没有意义
+  const hadKey = hasOwn(target, key)
+  // 删除是否成功的结果
+  const result = Reflect.deleteProperty(target, key)
+  // 对象有这个属性，并且删除成功才会触发更新
+  if (hadKey && result) {
+    trigger(target, TriggerOpTypes.DELETE, key)
+  }
+  return result
+}
+
+export const mutableHandlers: ProxyHandler<object> = {
+  get,
+  set,
+  has,
+  ownKeys,
+  deleteProperty,
+}
+```
+
+接下来测试一下这几种情况
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+  c: {
+    d: 3,
+  },
+}
+
+const state1 = reactive(obj)
+
+function fn() {
+  Object.keys(state1)
+}
+
+fn()
+state1.a = 2
+state1.a = 2
+state1.e = 2
+
+delete state1.a
+
+delete state1.f
+```
+
+![20260330173706](https://tuchuang.coder-sunshine.top/images/20260330173706.png)
+
+可以看到`迭代`正常收集依赖，新增 e 触发 add，删除 a 触发 delete，删除 f 由于 f 根本就不存在所以不触发任何操作
+
+- 可以看到`迭代`正常收集依赖
+- 第一次修改 a 触发 set
+- 第二次修改 a 没有触发，因为修改后的值是一样的
+- 第三次修改 e 是触发的 add 操作，因为 e 一开始不存在
+- 第四次删除 a 正常触发 delete 操作
+- 第五次删除 f 没有触发 delete，因为 f 本来就不存在

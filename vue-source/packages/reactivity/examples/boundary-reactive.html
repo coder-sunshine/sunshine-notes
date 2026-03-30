@@ -106,12 +106,12 @@
       // fn()
 
       // 处理遍历操作
-      const obj = {
-        a: 1,
-        b: 2,
-      }
+      // const obj = {
+      //   a: 1,
+      //   b: 2,
+      // }
 
-      const state1 = reactive(obj)
+      // const state1 = reactive(obj)
 
       // function fn() {
       //   for (const key in state1) {
@@ -119,11 +119,35 @@
       // }
 
       // 或者
+      // function fn() {
+      //   Object.keys(state1)
+      // }
+
+      // fn()
+
+      // 新增，修改，删除不同动作的处理
+      const obj = {
+        a: 1,
+        b: 2,
+        c: {
+          d: 3,
+        },
+      }
+
+      const state1 = reactive(obj)
+
       function fn() {
         Object.keys(state1)
       }
 
       fn()
+      state1.a = 2
+      state1.a = 2
+      state1.e = 2
+
+      delete state1.a
+
+      delete state1.f
     </script>
   </body>
 </html>
