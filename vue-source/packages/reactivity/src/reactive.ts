@@ -2,7 +2,21 @@ import { isObject } from '@vue/shared'
 
 import { track, trigger } from './effect'
 
-const targetMap = new WeakMap()
+export const enum ReactiveFlags {
+  SKIP = '__v_skip',
+  IS_REACTIVE = '__v_isReactive',
+  IS_READONLY = '__v_isReadonly',
+  RAW = '__v_raw',
+}
+
+export interface Target {
+  [ReactiveFlags.SKIP]?: boolean
+  [ReactiveFlags.IS_REACTIVE]?: boolean
+  [ReactiveFlags.IS_READONLY]?: boolean
+  [ReactiveFlags.RAW]?: any
+}
+
+export const targetMap = new WeakMap<Target, any>()
 
 export function reactive<T extends object>(target: T): T
 export function reactive(target: object) {
@@ -17,8 +31,20 @@ export function reactive(target: object) {
     return targetMap.get(target)
   }
 
+  // 只要读到了__v_isReactive，就返回target
+  // 因为Proxy对象直接拦截了这个属性
+  if (target[ReactiveFlags.IS_REACTIVE]) {
+    return target
+  }
+
   const proxy = new Proxy(target, {
     get(target, key) {
+      // 如果进入到get方法，说明肯定是一个proxy代理对象
+      // 如果访问的是__v_isReactive，返回true
+      if (key === ReactiveFlags.IS_REACTIVE) {
+        return true
+      }
+
       // todo: 收集依赖
       track(target, key)
       // 返回对象的相应属性值

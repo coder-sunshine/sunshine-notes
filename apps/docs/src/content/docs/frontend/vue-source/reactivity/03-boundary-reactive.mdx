@@ -82,4 +82,195 @@ export function reactive(target: object) {
 
 这样处理后，`state1` 和 `state2` 就相等了
 
-##
+## 如果是已经被 proxy 处理过的代理对象，无需再次代理
+
+```ts
+const obj = { count: 1 }
+const state1 = reactive(obj)
+const state2 = reactive(state1)
+console.log('state1 === state2', state1 === state2)
+```
+
+![20260330143445](https://tuchuang.coder-sunshine.top/images/20260330143445.png)
+
+:::tip[其实问题的关键在于怎么知道传入的 `state1` 是已经被代理过的 `proxy` 对象呢？]
+
+其实很简单，如果是 `proxy` 对象，那么访问他的属性的时候，不管有没有这个属性，都是会进到 `get` 方法中的，而普通对象是没有这个的
+:::
+
+```ts
+const obj = { count: 1 }
+const state1 = reactive(obj)
+const state2 = reactive(state1)
+console.log('state1 === state2', state1 === state2)
+
+const proxy = new Proxy(obj, {
+  get(target, key) {
+    console.log('get 方法被命中', key)
+    return target[key]
+  },
+})
+
+obj.count // 不会触发 get
+proxy.count // 会触发 get
+proxy.xxx // 会触发 get,就算没有 xxx 属性
+```
+
+![20260330144254](https://tuchuang.coder-sunshine.top/images/20260330144254.png)
+
+因此，利用这个特性，在创建 reactive 对象的时候，访问一下这个对象的一个特定值 `__v_isReactive`，访问的时候如果触发了 `get` 方法，那么就说明肯定是一个 `proxy` 代理对象，没有触发，就是一个普通对象
+
+```ts
+const proxy = new Proxy(target, {
+  get(target, key, receiver) {
+    // 如果访问的是ReactiveFlags.IS_REACTIVE，返回true，因为能进入到这里的肯定是代理对象
+    if (key === '__v_isReactive') {
+      return true
+    }
+
+    track(target, key)
+    const result = Reflect.get(target, key)
+    console.log('result---', result)
+    return result
+  },
+  // ......
+})
+```
+
+```ts ins={21-25,29-33}
+// vue-source/packages/reactivity/src/reactive.ts
+import { isObject } from '@vue/shared'
+
+import { track, trigger } from './effect'
+
+const targetMap = new WeakMap()
+
+export function reactive<T extends object>(target: T): T
+export function reactive(target: object) {
+  // 判断传入的是否是对象
+  if (!isObject(target)) {
+    console.log('传入的必须是一个对象')
+    return target
+  }
+
+  // 判断是否已经被代理过
+  if (targetMap.has(target)) {
+    return targetMap.get(target)
+  }
+
+  // 只要读到了__v_isReactive，就返回target
+  // 因为Proxy对象直接拦截了这个属性
+  if (target['__v_isReactive']) {
+    return target
+  }
+
+  const proxy = new Proxy(target, {
+    get(target, key) {
+      // 如果进入到get方法，说明肯定是一个proxy代理对象
+      // 如果访问的是__v_isReactive，返回true
+      if (key === '__v_isReactive') {
+        return true
+      }
+
+      // todo: 收集依赖
+      track(target, key)
+      // 返回对象的相应属性值
+      const result = Reflect.get(target, key)
+      return result
+    },
+    set(target, key, value) {
+      // todo: 触发更新
+      trigger(target, key)
+      // 设置对象的相应属性值
+      const result = Reflect.set(target, key, value)
+      return result
+    },
+  })
+
+  // 存储代理对象
+  targetMap.set(target, proxy)
+
+  return proxy
+}
+```
+
+![20260330150025](https://tuchuang.coder-sunshine.top/images/20260330150025.png)
+
+这样修改后，就搞定了，然后处理下 ts 的问题，和硬编码的问题，这里直接把 vue 源码的类型拿过来就行了
+
+![20260330150146](https://tuchuang.coder-sunshine.top/images/20260330150146.png)
+
+```ts
+// vue-source/packages/reactivity/src/reactive.ts
+import { isObject } from '@vue/shared'
+
+import { track, trigger } from './effect'
+
+export const enum ReactiveFlags {
+  SKIP = '__v_skip',
+  IS_REACTIVE = '__v_isReactive',
+  IS_READONLY = '__v_isReadonly',
+  RAW = '__v_raw',
+}
+
+export interface Target {
+  [ReactiveFlags.SKIP]?: boolean
+  [ReactiveFlags.IS_REACTIVE]?: boolean
+  [ReactiveFlags.IS_READONLY]?: boolean
+  [ReactiveFlags.RAW]?: any
+}
+
+export const targetMap = new WeakMap<Target, any>()
+
+export function reactive<T extends object>(target: T): T
+export function reactive(target: object) {
+  // 判断传入的是否是对象
+  if (!isObject(target)) {
+    console.log('传入的必须是一个对象')
+    return target
+  }
+
+  // 判断是否已经被代理过
+  if (targetMap.has(target)) {
+    return targetMap.get(target)
+  }
+
+  // 只要读到了__v_isReactive，就返回target
+  // 因为Proxy对象直接拦截了这个属性
+  if (target[ReactiveFlags.IS_REACTIVE]) {
+    return target
+  }
+
+  const proxy = new Proxy(target, {
+    get(target, key) {
+      // 如果进入到get方法，说明肯定是一个proxy代理对象
+      // 如果访问的是__v_isReactive，返回true
+      if (key === ReactiveFlags.IS_REACTIVE) {
+        return true
+      }
+
+      // todo: 收集依赖
+      track(target, key)
+      // 返回对象的相应属性值
+      const result = Reflect.get(target, key)
+      return result
+    },
+    set(target, key, value) {
+      // todo: 触发更新
+      trigger(target, key)
+      // 设置对象的相应属性值
+      const result = Reflect.set(target, key, value)
+      return result
+    },
+  })
+
+  // 存储代理对象
+  targetMap.set(target, proxy)
+
+  return proxy
+}
+```
+
+:::tip[简单解释一下这四个值]
+Vue 需要在对象或代理对象身上挂一些内部标识，用来判断它是不是`响应式`、是不是`只读`、要不要`跳过代理`、以及如何`拿到原始对象`。
+:::

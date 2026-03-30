@@ -9,11 +9,30 @@
     <script type="module">
       import { reactive } from '../dist/reactivity.esm.js'
 
-      const obj = { count: 1 }
+      // 如果对象已经被代理过，无需再次代理
+      // const obj = { count: 1 }
 
+      // const state1 = reactive(obj)
+      // const state2 = reactive(obj)
+      // console.log('state1 === state2', state1 === state2)
+
+      // 如果是已经被 proxy 处理过的代理对象，无需再次代理
+      const obj = { count: 1 }
       const state1 = reactive(obj)
-      const state2 = reactive(obj)
+      const state2 = reactive(state1)
+      const state3 = reactive(obj)
       console.log('state1 === state2', state1 === state2)
+
+      // const proxy = new Proxy(obj, {
+      //   get(target, key) {
+      //     console.log('get 方法被命中', key)
+      //     return target[key]
+      //   },
+      // })
+
+      // obj.count
+      // proxy.count
+      // proxy.xxx
     </script>
   </body>
 </html>
