@@ -64,6 +64,12 @@ export function reactive(target: object) {
       const result = Reflect.set(target, key, value, receiver)
       return result
     },
+    has(target, key) {
+      // 收集依赖
+      track(target, key)
+      const result = Reflect.has(target, key)
+      return result
+    },
   })
 
   // 存储代理对象

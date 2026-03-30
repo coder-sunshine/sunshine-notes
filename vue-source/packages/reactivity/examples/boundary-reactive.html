@@ -48,20 +48,35 @@
 
       // state1.c
 
+      // 原始对象嵌套处理
+      // const obj = {
+      //   a: 1,
+      //   b: 2,
+      //   c: {
+      //     d: 3,
+      //   },
+      // }
+
+      // const state1 = reactive(obj)
+
+      // // state1.c.d
+
+      // console.log(state1.c)
+      // console.log(state1.c.d)
+
+      // 对于 in 关键字的处理
       const obj = {
         a: 1,
         b: 2,
-        c: {
-          d: 3,
-        },
       }
 
       const state1 = reactive(obj)
 
-      // state1.c.d
+      function fn() {
+        console.log('a' in state1)
+      }
 
-      console.log(state1.c)
-      console.log(state1.c.d)
+      fn()
     </script>
   </body>
 </html>

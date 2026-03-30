@@ -404,3 +404,38 @@ const proxy = new Proxy(target, {
 ![20260330160241](https://tuchuang.coder-sunshine.top/images/20260330160241.png)
 
 这个时候就可以看到 c 对应值的是一个代理对象了。
+
+## 对于 in 关键字的处理
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+}
+
+const state1 = reactive(obj)
+
+function fn() {
+  console.log('a' in state1)
+}
+
+fn()
+```
+
+对于这种情况也是需要处理的，比如刚开始 a 在，后面又把 a 删了，那么 a 就不在了，那么也是需要收集依赖的
+
+in关键字，在JS内部，触发的是`[[HasProperty]]`的内部方法，而这个内部方法刚好对应`Proxy`代理对象的`has`方法
+
+```ts
+const proxy = new Proxy(target, {
+  // ...
+  has(target, key) {
+    // 收集依赖
+    track(target, key)
+    const result = Reflect.has(target, key)
+    return result
+  },
+})
+```
+
+![20260330161528](https://tuchuang.coder-sunshine.top/images/20260330161528.png)
