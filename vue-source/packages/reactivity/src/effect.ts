@@ -1,7 +1,9 @@
-export function track(target: object, key: unknown) {
-  console.log(`target ${JSON.stringify(target)} 依赖收集：${key}属性被读取了`)
+import { TrackOpTypes, TriggerOpTypes } from './operations'
+
+export function track(target: object, type: TrackOpTypes, key: unknown) {
+  console.log(`%c依赖收集: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #f40')
 }
 
-export function trigger(target: object, key: unknown) {
-  console.log(`target ${JSON.stringify(target)} 触发更新：${key}属性被修改了`)
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  console.log(`%c派发更新: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #0f0')
 }

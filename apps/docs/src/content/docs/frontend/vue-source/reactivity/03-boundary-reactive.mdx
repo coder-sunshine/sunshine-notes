@@ -542,3 +542,168 @@ export function reactive(target: object) {
   return proxy
 }
 ```
+
+## 细化依赖收集和触发更新动作
+
+当在函数中执行某些动作的时候，需要更细致的区分读取操作：
+
+比如，当下面的情况出现
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+}
+
+const state1 = reactive(obj)
+
+function fn() {
+  'a' in state1
+}
+state1.a = 123
+fn()
+```
+
+函数中关心的是属性`a`在`state1`中是否存在。如果`'a' in state1`是存在的。那么下面的`state1.a = 123`这个修改操作，并不会改变`'a' in state1`有还是没有的状况。换句话说，如果函数中仅仅只是有这么一个判断语句，这样的操作并不会对界面有任何的影响。当然，如果是有一句显示语句那结果又不一样了。
+
+也就是说，在这种情况下，就算是`a`的值修改了，但是对函数没有影响，那就不应该再次去执行`fn()`函数，也就不需要再次进行依赖收集
+
+但是如果是下面这种代码
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+}
+
+const state1 = reactive(obj)
+
+function fn() {
+  'c' in state1
+}
+state1.c = 123
+fn()
+```
+
+如果`c`本身就是不存在的，那么`fn`函数中的`'c' in state1`这个语句，就会影响函数的结果，从而可能会影响视图显示的结果。
+
+也就是说，在这种情况下，c的值修改了，对函数是有影响，那就应该再次去执行`fn()`函数，进行依赖收集
+
+其实也就是说，我们之前在依赖收集和派发更新的时候，执行行为的划分不太细致，我们应该对执行的行为划分的更加细致，当触发某种动作的时候，才会触发相应的行为。`track`和`trigger`函数，我们需要为其添加对应的动作标志。
+
+有了对应的标志，才可以更好的表示，当前我正在读取某个对象的某个属性，或者我正在判断某个对象是否存在。
+
+还是直接把 vue 源码的值先拿过来
+
+![20260330163552](https://tuchuang.coder-sunshine.top/images/20260330163552.png)
+
+```ts
+// vue-source/packages/reactivity/src/operations.ts
+export const enum TrackOpTypes {
+  GET = 'get',
+  HAS = 'has',
+  ITERATE = 'iterate',
+}
+
+export const enum TriggerOpTypes {
+  SET = 'set',
+  ADD = 'add',
+  DELETE = 'delete',
+  CLEAR = 'clear',
+}
+```
+
+继续修改 `effect` 中的 `track` 和 `trigger` 方法
+
+```ts
+import { TrackOpTypes, TriggerOpTypes } from './operations'
+
+export function track(target: object, type: TrackOpTypes, key: unknown) {
+  console.log(`%c依赖收集: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #f40')
+}
+
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  console.log(`%c派发更新: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #0f0')
+}
+```
+
+继续修改 `baseHandlers.ts` 中调用
+
+```ts {9,23,31}
+function get(target: object, key: string | symbol, receiver: object): any {
+  // 如果进入到get方法，说明肯定是一个proxy代理对象
+  // 如果访问的是__v_isReactive，返回true
+  if (key === ReactiveFlags.IS_REACTIVE) {
+    return true
+  }
+
+  // todo: 收集依赖
+  track(target, TrackOpTypes.GET, key)
+  // 返回对象的相应属性值
+  const result = Reflect.get(target, key, receiver)
+
+  // 判断是不是对象，是对象就递归代理
+  if (isObject(result)) {
+    return reactive(result)
+  }
+
+  return result
+}
+
+function set(target: object, key: string | symbol, value: unknown, receiver: object): boolean {
+  // todo: 触发更新
+  trigger(target, TriggerOpTypes.SET, key)
+  // 设置对象的相应属性值
+  const result = Reflect.set(target, key, value, receiver)
+  return result
+}
+
+function has(target: object, key: string | symbol): boolean {
+  // 收集依赖
+  track(target, TrackOpTypes.HAS, key)
+  const result = Reflect.has(target, key)
+  return result
+}
+```
+
+改好后再来看看刚刚两种情况分别的打印，先看第二种情况
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+}
+
+const state1 = reactive(obj)
+
+function fn() {
+  'c' in state1
+}
+state1.c = 123
+fn()
+```
+
+![20260330164857](https://tuchuang.coder-sunshine.top/images/20260330164857.png)
+
+可以看到先派发更新，触发 `set` 操作，然后触发依赖收集 `has` 操作是没问题的。
+
+再来看看第一种情况
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+}
+
+const state1 = reactive(obj)
+
+function fn() {
+  'a' in state1
+}
+state1.a = 123
+fn()
+```
+
+![20260330165056](https://tuchuang.coder-sunshine.top/images/20260330165056.png)
+
+根据上面的分析，其实是不对的，如果已经有相关的属性了，修改属性，如果仅仅只是判断`'a' in state1` 是不应该在触发读取操作的重新执行的，不需要再次进行依赖收集。只是进一步操作，后续再处理这个问题。

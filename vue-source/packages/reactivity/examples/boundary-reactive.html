@@ -65,6 +65,20 @@
       // console.log(state1.c.d)
 
       // 对于 in 关键字的处理
+      // const obj = {
+      //   a: 1,
+      //   b: 2,
+      // }
+
+      // const state1 = reactive(obj)
+
+      // function fn() {
+      //   console.log('a' in state1)
+      // }
+
+      // fn()
+
+      // 细化依赖收集和触发更新动作
       const obj = {
         a: 1,
         b: 2,
@@ -73,10 +87,23 @@
       const state1 = reactive(obj)
 
       function fn() {
-        console.log('a' in state1)
+        'a' in state1
       }
-
+      state1.a = 123
       fn()
+
+      // const obj = {
+      //   a: 1,
+      //   b: 2,
+      // }
+
+      // const state1 = reactive(obj)
+
+      // function fn() {
+      //   'c' in state1
+      // }
+      // state1.c = 123
+      // fn()
     </script>
   </body>
 </html>
