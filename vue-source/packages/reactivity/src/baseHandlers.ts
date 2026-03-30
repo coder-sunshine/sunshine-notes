@@ -1,6 +1,6 @@
 import { isObject } from '@vue/shared'
 
-import { track, trigger } from './effect'
+import { ITERATE_KEY, track, trigger } from './effect'
 import { TrackOpTypes, TriggerOpTypes } from './operations'
 import { reactive, ReactiveFlags } from './reactive'
 
@@ -39,8 +39,14 @@ function has(target: object, key: string | symbol): boolean {
   return result
 }
 
+function ownKeys(target: object): (string | symbol)[] {
+  track(target, TrackOpTypes.ITERATE, ITERATE_KEY)
+  return Reflect.ownKeys(target)
+}
+
 export const mutableHandlers: ProxyHandler<object> = {
   get,
   set,
   has,
+  ownKeys,
 }

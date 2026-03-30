@@ -79,18 +79,18 @@
       // fn()
 
       // 细化依赖收集和触发更新动作
-      const obj = {
-        a: 1,
-        b: 2,
-      }
+      // const obj = {
+      //   a: 1,
+      //   b: 2,
+      // }
 
-      const state1 = reactive(obj)
+      // const state1 = reactive(obj)
 
-      function fn() {
-        'a' in state1
-      }
-      state1.a = 123
-      fn()
+      // function fn() {
+      //   'a' in state1
+      // }
+      // state1.a = 123
+      // fn()
 
       // const obj = {
       //   a: 1,
@@ -104,6 +104,26 @@
       // }
       // state1.c = 123
       // fn()
+
+      // 处理遍历操作
+      const obj = {
+        a: 1,
+        b: 2,
+      }
+
+      const state1 = reactive(obj)
+
+      // function fn() {
+      //   for (const key in state1) {
+      //   }
+      // }
+
+      // 或者
+      function fn() {
+        Object.keys(state1)
+      }
+
+      fn()
     </script>
   </body>
 </html>

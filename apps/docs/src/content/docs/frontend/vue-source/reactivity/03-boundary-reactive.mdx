@@ -707,3 +707,72 @@ fn()
 ![20260330165056](https://tuchuang.coder-sunshine.top/images/20260330165056.png)
 
 根据上面的分析，其实是不对的，如果已经有相关的属性了，修改属性，如果仅仅只是判断`'a' in state1` 是不应该在触发读取操作的重新执行的，不需要再次进行依赖收集。只是进一步操作，后续再处理这个问题。
+
+## 处理遍历操作
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+}
+
+const state1 = reactive(obj)
+
+// function fn() {
+//   for (const key in state1) {
+//   }
+// }
+
+// 或者
+function fn() {
+  Object.keys(state1)
+}
+
+fn()
+```
+
+可以在`ecma262`中找到对应的内部方法，发现`for-in`调用了方法`EnumerateObjectProperties`，而`EnumerateObjectProperties`中其实就是调用了反射方法`Reflect.ownKeys()`。
+
+而`Object.keys`其实差不多，只是调用了方法`EnumerableOwnProperties` ，而这个方法直接就调用了内部方法`[[OwnPropertyKeys]]`，代理Proxy中就有对应的处理方法`Proxy.ownKeys()`
+
+之前已经直接把 vue 源码复制过来了
+
+```ts {4}
+export const enum TrackOpTypes {
+  GET = 'get',
+  HAS = 'has',
+  ITERATE = 'iterate',
+}
+```
+
+但是需要注意的是，对象迭代依赖并没有指定的具体键`key`
+
+因此，当迭代一个对象的属性时，Vue 需要追踪这个对象的`所有属性（因为任何属性的增删都可能影响迭代的结果）`。所以 Vue 使用 `ITERATE_KEY` 作为一个特殊的键，表示`“这个 effect 依赖于对象的所有属性”`
+
+所以这个键，原则上可以使用任意的常量进行表示，比如`const ITERATE_KEY = "iterate"`，但是常量容易造成冲突，因此可以使用`Symbol`来表示唯一性，`const ITERATE_KEY = Symbol("iterate")`，既然使用`Symbol了`，有没有`iterate`这个名字来表示并不重要，因此也可以直接使用`const ITERATE_KEY = Symbol("")`来表示，其实在Vue3中，还有专门判断`生产环境`还是`开发环境`，`ITERATE_KEY`的赋值并不一样，暂时只需要用`Symbol`来表示对象迭代依赖的标识即可
+
+![20260330170853](https://tuchuang.coder-sunshine.top/images/20260330170853.png)
+
+```ts
+// vue-source/packages/reactivity/src/effect.ts
+// 用来表示对对象的“迭代依赖”的标识
+export const ITERATE_KEY = Symbol('')
+```
+
+```ts
+// vue-source/packages/reactivity/src/baseHandlers.ts
+// ...
+function ownKeys(target: object): (string | symbol)[] {
+  track(target, TrackOpTypes.ITERATE, ITERATE_KEY)
+  return Reflect.ownKeys(target)
+}
+
+export const mutableHandlers: ProxyHandler<object> = {
+  get,
+  set,
+  has,
+  ownKeys,
+}
+```
+
+![20260330171147](https://tuchuang.coder-sunshine.top/images/20260330171147.png)
