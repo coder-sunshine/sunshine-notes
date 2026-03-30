@@ -17,11 +17,11 @@
       // console.log('state1 === state2', state1 === state2)
 
       // 如果是已经被 proxy 处理过的代理对象，无需再次代理
-      const obj = { count: 1 }
-      const state1 = reactive(obj)
-      const state2 = reactive(state1)
-      const state3 = reactive(obj)
-      console.log('state1 === state2', state1 === state2)
+      // const obj = { count: 1 }
+      // const state1 = reactive(obj)
+      // const state2 = reactive(state1)
+      // const state3 = reactive(obj)
+      // console.log('state1 === state2', state1 === state2)
 
       // const proxy = new Proxy(obj, {
       //   get(target, key) {
@@ -33,6 +33,20 @@
       // obj.count
       // proxy.count
       // proxy.xxx
+
+      // 如果原始对象中有 get，set 访问器属性处理
+      const obj = {
+        a: 1,
+        b: 2,
+        get c() {
+          console.log('this', this)
+          return this.a + this.b
+        },
+      }
+
+      const state1 = reactive(obj)
+
+      state1.c
     </script>
   </body>
 </html>

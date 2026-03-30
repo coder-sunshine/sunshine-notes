@@ -274,3 +274,54 @@ export function reactive(target: object) {
 :::tip[简单解释一下这四个值]
 Vue 需要在对象或代理对象身上挂一些内部标识，用来判断它是不是`响应式`、是不是`只读`、要不要`跳过代理`、以及如何`拿到原始对象`。
 :::
+
+## 如果原始对象中有 get，set 访问器属性处理
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+  get c() {
+    console.log('this', this)
+    return this.a + this.b
+  },
+}
+
+const state1 = reactive(obj)
+
+state1.c
+```
+
+![20260330153425](https://tuchuang.coder-sunshine.top/images/20260330153425.png)
+
+这里访问了属性 `c`，是通过代理对象访问的 `c` 属性，按道理来说，这里应该会触发 `a` 和 `b` 属性的 `get`，但是从上面图可以看到并没有触发，而且 `this` 也还是原始对象，并不是 `proxy` 代理的对象。
+
+处理这个很简单，只需要把 `receiver` 传进去就行了。`receiver` 就是代表当前被代理的 `proxy` 对象
+
+```ts ins='receiver'
+// vue-source/packages/reactivity/src/reactive.ts
+// ...
+const proxy = new Proxy(target, {
+  get(target, key, receiver) {
+    // 如果进入到get方法，说明肯定是一个proxy代理对象
+    // 如果访问的是__v_isReactive，返回true
+    if (key === ReactiveFlags.IS_REACTIVE) {
+      return true
+    }
+
+    // todo: 收集依赖
+    track(target, key)
+    // 返回对象的相应属性值
+    const result = Reflect.get(target, key, receiver)
+    return result
+  },
+  set(target, key, value, receiver) {
+    // todo: 触发更新
+    trigger(target, key)
+    // 设置对象的相应属性值
+    const result = Reflect.set(target, key, value, receiver)
+    return result
+  },
+})
+// ...
+```

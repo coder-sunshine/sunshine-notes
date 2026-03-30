@@ -38,7 +38,7 @@ export function reactive(target: object) {
   }
 
   const proxy = new Proxy(target, {
-    get(target, key) {
+    get(target, key, receiver) {
       // 如果进入到get方法，说明肯定是一个proxy代理对象
       // 如果访问的是__v_isReactive，返回true
       if (key === ReactiveFlags.IS_REACTIVE) {
@@ -48,14 +48,14 @@ export function reactive(target: object) {
       // todo: 收集依赖
       track(target, key)
       // 返回对象的相应属性值
-      const result = Reflect.get(target, key)
+      const result = Reflect.get(target, key, receiver)
       return result
     },
-    set(target, key, value) {
+    set(target, key, value, receiver) {
       // todo: 触发更新
       trigger(target, key)
       // 设置对象的相应属性值
-      const result = Reflect.set(target, key, value)
+      const result = Reflect.set(target, key, value, receiver)
       return result
     },
   })
