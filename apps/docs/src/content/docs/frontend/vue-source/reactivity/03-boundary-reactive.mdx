@@ -439,3 +439,106 @@ const proxy = new Proxy(target, {
 ```
 
 ![20260330161528](https://tuchuang.coder-sunshine.top/images/20260330161528.png)
+
+## 对 proxy 代理的配置项拆分
+
+将 Proxy 中的配置对象拆分到 `baseHandlers.ts`中。
+
+```ts
+// vue-source/packages/reactivity/src/baseHandlers.ts
+import { isObject } from '@vue/shared'
+
+import { track, trigger } from './effect'
+import { reactive, ReactiveFlags } from './reactive'
+
+function get(target: object, key: string | symbol, receiver: object): any {
+  // 如果进入到get方法，说明肯定是一个proxy代理对象
+  // 如果访问的是__v_isReactive，返回true
+  if (key === ReactiveFlags.IS_REACTIVE) {
+    return true
+  }
+
+  // todo: 收集依赖
+  track(target, key)
+  // 返回对象的相应属性值
+  const result = Reflect.get(target, key, receiver)
+
+  // 判断是不是对象，是对象就递归代理
+  if (isObject(result)) {
+    return reactive(result)
+  }
+
+  return result
+}
+
+function set(target: object, key: string | symbol, value: unknown, receiver: object): boolean {
+  // todo: 触发更新
+  trigger(target, key)
+  // 设置对象的相应属性值
+  const result = Reflect.set(target, key, value, receiver)
+  return result
+}
+
+function has(target: object, key: string | symbol): boolean {
+  // 收集依赖
+  track(target, key)
+  const result = Reflect.has(target, key)
+  return result
+}
+
+export const mutableHandlers: ProxyHandler<object> = {
+  get,
+  set,
+  has,
+}
+```
+
+```ts {4,41}
+// vue-source/packages/reactivity/src/reactive.ts
+import { isObject } from '@vue/shared'
+
+import { mutableHandlers } from './baseHandlers'
+
+export const enum ReactiveFlags {
+  SKIP = '__v_skip',
+  IS_REACTIVE = '__v_isReactive',
+  IS_READONLY = '__v_isReadonly',
+  RAW = '__v_raw',
+}
+
+export interface Target {
+  [ReactiveFlags.SKIP]?: boolean
+  [ReactiveFlags.IS_REACTIVE]?: boolean
+  [ReactiveFlags.IS_READONLY]?: boolean
+  [ReactiveFlags.RAW]?: any
+}
+
+export const targetMap = new WeakMap<Target, any>()
+
+export function reactive<T extends object>(target: T): T
+export function reactive(target: object) {
+  // 判断传入的是否是对象
+  if (!isObject(target)) {
+    console.log('传入的必须是一个对象')
+    return target
+  }
+
+  // 判断是否已经被代理过
+  if (targetMap.has(target)) {
+    return targetMap.get(target)
+  }
+
+  // 只要读到了__v_isReactive，就返回target
+  // 因为Proxy对象直接拦截了这个属性
+  if (target[ReactiveFlags.IS_REACTIVE]) {
+    return target
+  }
+
+  const proxy = new Proxy(target, mutableHandlers)
+
+  // 存储代理对象
+  targetMap.set(target, proxy)
+
+  return proxy
+}
+```

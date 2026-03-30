@@ -1,6 +1,6 @@
 import { isObject } from '@vue/shared'
 
-import { track, trigger } from './effect'
+import { mutableHandlers } from './baseHandlers'
 
 export const enum ReactiveFlags {
   SKIP = '__v_skip',
@@ -37,40 +37,7 @@ export function reactive(target: object) {
     return target
   }
 
-  const proxy = new Proxy(target, {
-    get(target, key, receiver) {
-      // 如果进入到get方法，说明肯定是一个proxy代理对象
-      // 如果访问的是__v_isReactive，返回true
-      if (key === ReactiveFlags.IS_REACTIVE) {
-        return true
-      }
-
-      // todo: 收集依赖
-      track(target, key)
-      // 返回对象的相应属性值
-      const result = Reflect.get(target, key, receiver)
-
-      // 判断是不是对象，是对象就递归代理
-      if (isObject(result)) {
-        return reactive(result)
-      }
-
-      return result
-    },
-    set(target, key, value, receiver) {
-      // todo: 触发更新
-      trigger(target, key)
-      // 设置对象的相应属性值
-      const result = Reflect.set(target, key, value, receiver)
-      return result
-    },
-    has(target, key) {
-      // 收集依赖
-      track(target, key)
-      const result = Reflect.has(target, key)
-      return result
-    },
-  })
+  const proxy = new Proxy(target, mutableHandlers)
 
   // 存储代理对象
   targetMap.set(target, proxy)
