@@ -8,6 +8,7 @@ description: 在实现 reactive 的时候，一些边界问题的处理
 虽然有TS帮我们做参数限定，但是这只是在编译时，编译之后的js还是需要我们判断传入的参数是否是一个对象
 
 ```ts
+// vue-source/packages/reactivity/src/reactive.ts
 export function reactive<T extends object>(target: T): T
 export function reactive(target: object) {
   // 判断传入的是否是对象
@@ -22,6 +23,63 @@ export function reactive(target: object) {
 
 ## 如果对象已经被代理过，无需再次代理
 
-如果再此被代理，同一个原始对象，就生成了两个不同的Proxy对象，而且两个Proxy对象如果去比较的话，还是不相等的
+如果再次被代理，同一个原始对象，就生成了两个不同的Proxy对象，而且两个Proxy对象如果去比较的话，还是不相等的。
+
+```ts
+const obj = { count: 1 }
+
+const state1 = reactive(obj)
+const state2 = reactive(obj)
+console.log('state1 === state2', state1 === state2)
+```
+
+![20260330135306](https://tuchuang.coder-sunshine.top/images/20260330135306.png)
+
+此时可以使用 weakMap 来存储代理对象，如果有，直接取出就行了，没有就 set 到 weakMap 中。
+
+```ts ins={2,12-15,34-35}
+// vue-source/packages/reactivity/src/reactive.ts
+const targetMap = new WeakMap()
+
+export function reactive<T extends object>(target: T): T
+export function reactive(target: object) {
+  // 判断传入的是否是对象
+  if (!isObject(target)) {
+    console.log('传入的必须是一个对象')
+    return target
+  }
+
+  // 判断是否已经被代理过
+  if (targetMap.has(target)) {
+    return targetMap.get(target)
+  }
+
+  const proxy = new Proxy(target, {
+    get(target, key) {
+      // todo: 收集依赖
+      track(target, key)
+      // 返回对象的相应属性值
+      const result = Reflect.get(target, key)
+      return result
+    },
+    set(target, key, value) {
+      // todo: 触发更新
+      trigger(target, key)
+      // 设置对象的相应属性值
+      const result = Reflect.set(target, key, value)
+      return result
+    },
+  })
+
+  // 存储代理对象
+  targetMap.set(target, proxy)
+
+  return proxy
+}
+```
+
+![20260330142235](https://tuchuang.coder-sunshine.top/images/20260330142235.png)
+
+这样处理后，`state1` 和 `state2` 就相等了
 
 ##

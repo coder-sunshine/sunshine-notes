@@ -12,7 +12,8 @@
       const obj = { count: 1 }
 
       const state1 = reactive(obj)
-      console.log(state1)
+      const state2 = reactive(obj)
+      console.log('state1 === state2', state1 === state2)
     </script>
   </body>
 </html>
