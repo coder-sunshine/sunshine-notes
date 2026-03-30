@@ -325,3 +325,82 @@ const proxy = new Proxy(target, {
 })
 // ...
 ```
+
+## 原始对象属性嵌套处理
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+  c: {
+    d: 3,
+  },
+}
+
+const state1 = reactive(obj)
+
+state1.c.d
+```
+
+![20260330155600](https://tuchuang.coder-sunshine.top/images/20260330155600.png)
+
+可以看到只收集了 `c` 的依赖，并没有触发 `d` 的 `get`，
+
+```ts
+const obj = {
+  a: 1,
+  b: 2,
+  c: {
+    d: 3,
+  },
+}
+
+const state1 = reactive(obj)
+
+// state1.c.d
+
+console.log(state1.c)
+console.log(state1.c.d)
+```
+
+![20260330155656](https://tuchuang.coder-sunshine.top/images/20260330155656.png)
+
+可以看到 `c` 对应的对象并没有被 `proxy` 代理，所以收集不到依赖。
+
+解决方法很简单，只需要在 `proxy` 中读取属性的时候，加个判断，判断是不是对象，`是对象就递归调用`就行了
+
+```ts ins={15-18}
+// vue-source/packages/reactivity/src/reactive.ts
+const proxy = new Proxy(target, {
+  get(target, key, receiver) {
+    // 如果进入到get方法，说明肯定是一个proxy代理对象
+    // 如果访问的是__v_isReactive，返回true
+    if (key === ReactiveFlags.IS_REACTIVE) {
+      return true
+    }
+
+    // todo: 收集依赖
+    track(target, key)
+    // 返回对象的相应属性值
+    const result = Reflect.get(target, key, receiver)
+
+    // 判断是不是对象，是对象就递归代理
+    if (isObject(result)) {
+      return reactive(result)
+    }
+
+    return result
+  },
+  set(target, key, value, receiver) {
+    // todo: 触发更新
+    trigger(target, key)
+    // 设置对象的相应属性值
+    const result = Reflect.set(target, key, value, receiver)
+    return result
+  },
+})
+```
+
+![20260330160241](https://tuchuang.coder-sunshine.top/images/20260330160241.png)
+
+这个时候就可以看到 c 对应值的是一个代理对象了。

@@ -49,6 +49,12 @@ export function reactive(target: object) {
       track(target, key)
       // 返回对象的相应属性值
       const result = Reflect.get(target, key, receiver)
+
+      // 判断是不是对象，是对象就递归代理
+      if (isObject(result)) {
+        return reactive(result)
+      }
+
       return result
     },
     set(target, key, value, receiver) {

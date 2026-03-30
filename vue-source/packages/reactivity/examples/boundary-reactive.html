@@ -35,18 +35,33 @@
       // proxy.xxx
 
       // 如果原始对象中有 get，set 访问器属性处理
+      // const obj = {
+      //   a: 1,
+      //   b: 2,
+      //   get c() {
+      //     console.log('this', this)
+      //     return this.a + this.b
+      //   },
+      // }
+
+      // const state1 = reactive(obj)
+
+      // state1.c
+
       const obj = {
         a: 1,
         b: 2,
-        get c() {
-          console.log('this', this)
-          return this.a + this.b
+        c: {
+          d: 3,
         },
       }
 
       const state1 = reactive(obj)
 
-      state1.c
+      // state1.c.d
+
+      console.log(state1.c)
+      console.log(state1.c.d)
     </script>
   </body>
 </html>
