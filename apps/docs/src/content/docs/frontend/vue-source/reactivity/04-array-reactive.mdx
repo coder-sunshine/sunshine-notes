@@ -87,3 +87,237 @@ Vue 3 虽然能用 `Proxy` 直接拦截数组，但数组方法本身有`引用�
 - `push` / `pop` / `shift` / `unshift` / `splice` 这类解决“长度变化带来的依赖追踪问题”
 
 :::
+
+## 数组读取的相关问题
+
+```ts
+const arr = [1, 2, 3]
+const state = reactive(arr)
+
+state[0]
+state[1] = 10
+
+for (let i = 0; i < state.length; i++) {
+  state[i]
+}
+
+for (const key in state) {
+}
+```
+
+![20260331140620](https://tuchuang.coder-sunshine.top/images/20260331140620.png)
+
+从上图可以看到,读取和设置都是正常的，但是这里对于 `length` 一直在重复的收集依赖，可以把循环写成下面这样，当然只限于 `length` 属性不会被修改的前提
+
+```ts
+for (let i = 0, l = state.length; i < l; i++) {
+  state[i]
+}
+```
+
+![20260331140545](https://tuchuang.coder-sunshine.top/images/20260331140545.png)
+
+这样就只对 `length` 收集一次依赖了
+
+---
+
+数组也有一些自己身上的读取方法
+
+```ts
+const arr = [1, 2, 3]
+const state = reactive(arr)
+
+state.indexOf(2)
+```
+
+![20260331141237](https://tuchuang.coder-sunshine.top/images/20260331141237.png)
+
+从上图可以发现一个问题，就是每次都要看每一个下标是否存在，存在再去读取这个数组对应下标的值，有点多此一举，这是比较隐式的，下面这个代码就比较明显了
+
+```ts
+const obj = { a: 1 }
+
+const arr = [1, obj, 3]
+
+const state = reactive(arr)
+
+const idx = state.indexOf(obj)
+console.log(idx)
+```
+
+![20260331141858](https://tuchuang.coder-sunshine.top/images/20260331141858.png)
+
+可以看到从代理对象中去找 obj 找不到。因为我们在处理 reactive 的时候做了判断，如果是对象就递归处理。所以肯定不想等了，除非用下面的方式去判断
+
+```ts
+const idx = state.indexOf(reactive(obj))
+console.log(idx)
+```
+
+![20260331141928](https://tuchuang.coder-sunshine.top/images/20260331141928.png)
+
+可以看到这样就找到了。
+
+那么解决问题的方案也很简单，只需要把 `state` 转化成原始对象就可以了，之前在 `ReactiveFlags` 里面有个 `RAW` 一直没用到
+
+只需要在 reactive 里面判断下
+
+```ts {16-19}
+export function reactive<T extends object>(target: T): T
+export function reactive(target: object) {
+  // 判断传入的是否是对象
+  if (!isObject(target)) {
+    console.log('传入的必须是一个对象')
+    return target
+  }
+
+  // 判断是否已经被代理过
+  if (targetMap.has(target)) {
+    return targetMap.get(target)
+  }
+
+  // 只要读到了__v_isReactive，就返回target
+  // 因为Proxy对象直接拦截了这个属性
+  // 同样 读到target[ReactiveFlags.RAW]直接返回对象
+  if (target[ReactiveFlags.RAW] && target[ReactiveFlags.IS_REACTIVE]) {
+    return target
+  }
+
+  const proxy = new Proxy(target, mutableHandlers)
+
+  // 存储代理对象
+  targetMap.set(target, proxy)
+
+  return proxy
+}
+```
+
+这里 `target[ReactiveFlags.RAW]` 会触发 `target` 的 `get` 操作，在 `get` 操作里面再返回原始对象就行了
+
+```ts {6-9}
+function get(target: object, key: string | symbol, receiver: object): any {
+  // 如果进入到get方法，说明肯定是一个proxy代理对象
+  // 如果访问的是__v_isReactive，返回true
+  if (key === ReactiveFlags.IS_REACTIVE) {
+    return true
+  } else if (key === ReactiveFlags.RAW && receiver === targetMap.get(target)) {
+    // 访问的是 __v_raw 属性，并且是代理对象本身在访问
+    return target
+  }
+
+  // todo: 收集依赖
+  track(target, TrackOpTypes.GET, key)
+  // 返回对象的相应属性值
+  const result = Reflect.get(target, key, receiver)
+
+  // 判断是不是对象，是对象就递归代理
+  if (isObject(result)) {
+    return reactive(result)
+  }
+
+  return result
+}
+```
+
+测试一下，访问 代理对象的 `__v_raw`，看下是不是返回的原始值
+
+```ts
+const obj = { a: 1 }
+
+const arr = [1, obj, 3]
+
+const state = reactive(arr)
+
+console.log(state['__v_raw'])
+```
+
+![20260331144401](https://tuchuang.coder-sunshine.top/images/20260331144401.png)
+
+可以写个方法包装一下，让其返回原始对象，也就是 `toRaw`
+
+![20260331144735](https://tuchuang.coder-sunshine.top/images/20260331144735.png)
+
+```ts
+export function toRaw<T>(observed: T): T {
+  return (observed && toRaw((observed as Target)[ReactiveFlags.RAW])) || observed
+}
+```
+
+当代理对象调用这些方法的时候，可以重写一下这些方法，然后在这些方法里面去处理。
+
+```ts
+// vue-source/packages/reactivity/src/baseHandlers.ts
+const arrayInstrumentations: Record<string, Function> = {}
+
+;(['includes', 'indexOf', 'lastIndexOf'] as const).forEach(key => {
+  // 获取原生方法的引用
+  const method = Array.prototype[key] as any
+
+  arrayInstrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+    // 将 this 转化为 非响应式(代理)对象  --> 这里的 this 就是调用这些方法的数组
+    const arr = toRaw(this)
+
+    // 遍历当前数组的每个索引，通过track函数对数组索引进行依赖收集
+    for (let i = 0, l = this.length; i < l; i++) {
+      track(arr, TrackOpTypes.GET, i + '')
+    }
+
+    // 直接在原始对象中查找,使用原始数组和参数
+    const res = method.apply(arr, args)
+
+    if (res === -1 || res === false) {
+      // 如果在原始数组中没有找到，注意，还需要进行处理，因为参数也有可能是响应式的
+      return method.apply(arr, args.map(toRaw))
+    } else {
+      return res
+    }
+  }
+})
+```
+
+然后当调用这些方法的时候，就会触发到 `get` 对应的 `key`。所以继续在 `get` 里面处理。
+
+```ts {12-16}
+// vue-source/packages/reactivity/src/baseHandlers.ts
+function get(target: object, key: string | symbol, receiver: object): any {
+  // 如果进入到get方法，说明肯定是一个proxy代理对象
+  // 如果访问的是__v_isReactive，返回true
+  if (key === ReactiveFlags.IS_REACTIVE) {
+    return true
+  } else if (key === ReactiveFlags.RAW && receiver === targetMap.get(target)) {
+    // 访问的是 __v_raw 属性，并且是代理对象本身在访问
+    return target
+  }
+
+  // 判断是不是数组，如果是数组，并且 key 是 arrayInstrumentations 对应的方法
+  const targetIsArray = isArray(target)
+  if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
+    return Reflect.get(arrayInstrumentations, key, receiver)
+  }
+
+  // todo: 收集依赖
+  track(target, TrackOpTypes.GET, key)
+  // 返回对象的相应属性值
+  const result = Reflect.get(target, key, receiver)
+
+  // 判断是不是对象，是对象就递归代理
+  if (isObject(result)) {
+    return reactive(result)
+  }
+
+  return result
+}
+```
+
+```ts
+const obj = { a: 1 }
+const arr = [1, obj, 3]
+const state = reactive(arr)
+
+console.log(state.indexOf(obj))
+console.log(state.indexOf(reactive(obj)))
+```
+
+![20260331163400](https://tuchuang.coder-sunshine.top/images/20260331163400.png)
+
+可以看到这个时候就能正常找到了，而且会发现之前每次都还需要 has 判断，现在也没有触发 has 了，也没有去收集 indexOf 这些依赖了。

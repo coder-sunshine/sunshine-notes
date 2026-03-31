@@ -33,7 +33,8 @@ export function reactive(target: object) {
 
   // 只要读到了__v_isReactive，就返回target
   // 因为Proxy对象直接拦截了这个属性
-  if (target[ReactiveFlags.IS_REACTIVE]) {
+  // 同样 读到target[ReactiveFlags.RAW]直接返回对象
+  if (target[ReactiveFlags.RAW] && target[ReactiveFlags.IS_REACTIVE]) {
     return target
   }
 
@@ -43,4 +44,8 @@ export function reactive(target: object) {
   targetMap.set(target, proxy)
 
   return proxy
+}
+
+export function toRaw<T>(observed: T): T {
+  return (observed && toRaw((observed as Target)[ReactiveFlags.RAW])) || observed
 }

@@ -1,14 +1,50 @@
-import { hasChanged, hasOwn, isObject } from '@vue/shared'
+import { hasChanged, hasOwn, isArray, isObject } from '@vue/shared'
 
 import { ITERATE_KEY, track, trigger } from './effect'
 import { TrackOpTypes, TriggerOpTypes } from './operations'
-import { reactive, ReactiveFlags } from './reactive'
+import { reactive, ReactiveFlags, targetMap, toRaw } from './reactive'
+
+const arrayInstrumentations: Record<string, Function> = {}
+
+;(['includes', 'indexOf', 'lastIndexOf'] as const).forEach(key => {
+  // 获取原生方法的引用
+  const method = Array.prototype[key] as any
+
+  arrayInstrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+    // 将 this 转化为 非响应式(代理)对象  --> 这里的 this 就是调用这些方法的数组
+    const arr = toRaw(this)
+
+    // 遍历当前数组的每个索引，通过track函数对数组索引进行依赖收集
+    for (let i = 0, l = this.length; i < l; i++) {
+      track(arr, TrackOpTypes.GET, i + '')
+    }
+
+    // 直接在原始对象中查找,使用原始数组和参数
+    const res = method.apply(arr, args)
+
+    if (res === -1 || res === false) {
+      // 如果在原始数组中没有找到，注意，还需要进行处理，因为参数也有可能是响应式的
+      return method.apply(arr, args.map(toRaw))
+    } else {
+      return res
+    }
+  }
+})
 
 function get(target: object, key: string | symbol, receiver: object): any {
   // 如果进入到get方法，说明肯定是一个proxy代理对象
   // 如果访问的是__v_isReactive，返回true
   if (key === ReactiveFlags.IS_REACTIVE) {
     return true
+  } else if (key === ReactiveFlags.RAW && receiver === targetMap.get(target)) {
+    // 访问的是 __v_raw 属性，并且是代理对象本身在访问
+    return target
+  }
+
+  // 判断是不是数组，如果是数组，并且 key 是 arrayInstrumentations 对应的方法
+  const targetIsArray = isArray(target)
+  if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
+    return Reflect.get(arrayInstrumentations, key, receiver)
   }
 
   // todo: 收集依赖

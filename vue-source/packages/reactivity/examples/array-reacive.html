@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>array-reactive</title>
+  </head>
+  <body>
+    <script type="module">
+      import { reactive, toRaw } from '../dist/reactivity.esm.js'
+
+      // const arr = [1, 2, 3]
+      // const state = reactive(arr)
+
+      // state[0]
+      // state[1] = 10
+
+      // for (let i = 0; i < state.length; i++) {
+      //   state[i]
+      // }
+      // for (let i = 0, l = state.length; i < l; i++) {
+      //   state[i]
+      // }
+
+      // for (const key in state) {
+      // }
+
+      // state.push(4)
+
+      // const arr = [1, 2, 3]
+      // const state = reactive(arr)
+
+      // state.indexOf(2)
+
+      const obj = { a: 1 }
+      const arr = [1, obj, 3]
+      const state = reactive(arr)
+
+      console.log(state.indexOf(obj))
+      // console.log(state.indexOf(reactive(obj)))
+
+      // const idx = state.indexOf(reactive(obj))
+      // console.log(idx)
+      // console.log(state['__v_raw'])
+      // console.log(toRaw(state))
+      // console.log(state)
+    </script>
+  </body>
+</html>
