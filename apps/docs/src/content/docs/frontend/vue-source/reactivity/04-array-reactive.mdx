@@ -1,0 +1,89 @@
+---
+title: 数组相关问题
+description: 对于 proxy 代理的数组的一些细节处理
+---
+
+其实现在直接是通过`Proxy`做的代理，和`vue2`不同的是`Proxy`本身就能对数组做出相应的处理，所以大部分情况下，我们不需要做过多的处理
+
+:::tip[vue2 对于数组处理]
+**Vue 2 不能直接监听数组下标和 length 变化，所以要“改写数组原型方法”来兜底；Vue 3 用 Proxy，数组下标、length、读取这些都能直接拦截，能力更完整。**
+
+**Vue 2**
+
+- 基于 `Object.defineProperty`
+- 不能拦截 `arr[1] = x`
+- 不能拦截 `arr.length = 0`
+- 所以要劫持这些变异方法：
+  `push`、`pop`、`shift`、`unshift`、`splice`、`sort`、`reverse`
+- 如果直接按索引改值，通常要用 `Vue.set(arr, index, value)` 才能触发更新
+
+**Vue 3**
+
+- 基于 `Proxy`
+- 能直接拦截：
+  - `arr[index] = value`
+  - `arr.length = n`
+  - 属性读取
+  - `in`
+  - 枚举等
+- 不再依赖 `Vue.set`
+- 但数组还是有专门的额外处理，比如：
+  - `includes`
+  - `indexOf`
+  - `push`
+  - `splice`
+
+**总结：`Vue 2` 是“方法劫持为主，能力受限”；`Vue 3` 是“`Proxy` 全面拦截，更自然也更完整”。**
+
+:::
+
+虽然 `Vue 3` 已经能用 `Proxy` 直接拦截数组了，但数组有些方法光靠普通 `get/set` 还不够，所以源码里还是做了额外处理。
+
+主要是两个原因
+
+1. 某些查找方法要兼容“代理对象”和“原始对象”
+
+```ts
+const raw = {}
+const arr = reactive([raw])
+
+arr.includes(raw)
+```
+
+数组里实际存的有时候可能是原对象，有时候拿去比较的是代理对象，或者反过来。
+如果完全交给原生 `includes / indexOf`，可能会因为引用不一样导致判断不准。
+
+所以 Vue 3 会对这些方法做一层包装：
+
+- `includes`
+- `indexOf`
+- `lastIndexOf`
+
+先按原值查一次，不行再按 `toRaw` 后的值查一次。
+
+2. 某些变异方法会顺带读写 length，容易造成多余追踪甚至死循环
+
+比如：
+
+- `push`
+- `pop`
+- `shift`
+- `unshift`
+- `splice`
+
+这些方法内部会改数组长度。
+如果 `effect` 里正好操作数组，而执行这些方法时又把 `length` 错误收集成依赖，就可能导致：
+
+- 重复触发
+- 不必要更新
+- 甚至递归死循环
+
+所以 Vue 3 对这些方法也会做特殊处理，比如在执行某些数组变异时临时暂停依赖收集。
+
+:::note[总结]
+Vue 3 虽然能用 `Proxy` 直接拦截数组，但数组方法本身有`引用比较`和`length 连带影响`这两个特殊点，所以源码里还是要额外包一层。
+
+- `includes` / `indexOf` / `lastIndexOf` 解决“代理值和原始值比较不准”
+- `push` / `pop` / `shift` / `unshift` / `splice` 这类解决“长度变化带来的依赖追踪问题”
+
+:::
