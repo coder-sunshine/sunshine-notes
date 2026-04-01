@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>readonly</title>
+  </head>
+  <body>
+    <script type="module">
+      import { reactive, readonly } from '../dist/reactivity.esm.js'
+
+      const obj = {
+        a: 1,
+        b: 2,
+        c: {
+          d: 3,
+        },
+      }
+
+      const readonlyProxy = readonly(obj)
+      // readonly不触发依赖收集
+      readonlyProxy.a
+
+      // 对象的直接属性不能修改
+      readonlyProxy.a = 2
+      console.log(readonlyProxy.a)
+
+      // 嵌套的对象的属性也不能修改
+      readonlyProxy.c.d = 22
+      console.log(readonlyProxy.c.d)
+    </script>
+  </body>
+</html>

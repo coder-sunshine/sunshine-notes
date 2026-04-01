@@ -2,7 +2,7 @@ import { hasChanged, hasOwn, isArray, isObject } from '@vue/shared'
 
 import { enableTracking, ITERATE_KEY, pauseTracking, track, trigger } from './effect'
 import { TrackOpTypes, TriggerOpTypes } from './operations'
-import { reactive, ReactiveFlags, targetMap, toRaw } from './reactive'
+import { reactive, ReactiveFlags, readonly, readonlyMap, targetMap, toRaw } from './reactive'
 
 const arrayInstrumentations: Record<string, Function> = {}
 
@@ -40,33 +40,42 @@ const arrayInstrumentations: Record<string, Function> = {}
   }
 })
 
-function get(target: object, key: string | symbol, receiver: object): any {
-  // 如果进入到get方法，说明肯定是一个proxy代理对象
-  // 如果访问的是__v_isReactive，返回true
-  if (key === ReactiveFlags.IS_REACTIVE) {
-    return true
-  } else if (key === ReactiveFlags.RAW && receiver === targetMap.get(target)) {
-    // 访问的是 __v_raw 属性，并且是代理对象本身在访问
-    return target
+function createGetter(isReadonly = false) {
+  return function get(target: object, key: string | symbol, receiver: object): any {
+    // 如果进入到get方法，说明肯定是一个proxy代理对象
+    // 如果访问的是__v_isReactive，返回true
+    if (key === ReactiveFlags.IS_REACTIVE) {
+      return true
+    } else if (key === ReactiveFlags.IS_READONLY) {
+      // 如果访问的是ReactiveFlags.IS_READONLY, 返回true
+      return isReadonly
+    } else if (key === ReactiveFlags.RAW && receiver === (isReadonly ? readonlyMap : targetMap).get(target)) {
+      // 访问的是 __v_raw 属性，并且是代理对象本身在访问
+      return target
+    }
+
+    // 只有在非只读的情况下才会收集依赖
+    if (!isReadonly) {
+      track(target, TrackOpTypes.GET, key)
+    }
+
+    // 判断是不是数组，如果是数组，并且 key 是 arrayInstrumentations 对应的方法
+    const targetIsArray = isArray(target)
+    if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
+      return Reflect.get(arrayInstrumentations, key, receiver)
+    }
+
+    // 返回对象的相应属性值
+    const result = Reflect.get(target, key, receiver)
+
+    // 判断是不是对象，是对象就递归代理
+    // 如果整个对象是只读的，那么这个对象的属性是对象，也应该是只读的
+    if (isObject(result)) {
+      return isReadonly ? readonly(result) : reactive(result)
+    }
+
+    return result
   }
-
-  // 判断是不是数组，如果是数组，并且 key 是 arrayInstrumentations 对应的方法
-  const targetIsArray = isArray(target)
-  if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
-    return Reflect.get(arrayInstrumentations, key, receiver)
-  }
-
-  // todo: 收集依赖
-  track(target, TrackOpTypes.GET, key)
-  // 返回对象的相应属性值
-  const result = Reflect.get(target, key, receiver)
-
-  // 判断是不是对象，是对象就递归代理
-  if (isObject(result)) {
-    return reactive(result)
-  }
-
-  return result
 }
 
 function set(target: Record<string | symbol, unknown>, key: string | symbol, value: unknown, receiver: object): boolean {
@@ -132,10 +141,25 @@ function deleteProperty(target: Record<string | symbol, unknown>, key: string | 
   return result
 }
 
+const get = createGetter()
+const readonlyGet = createGetter(true)
+
 export const mutableHandlers: ProxyHandler<object> = {
   get,
   set,
   has,
   ownKeys,
   deleteProperty,
+}
+
+export const readonlyHandlers: ProxyHandler<object> = {
+  get: readonlyGet,
+  set(target, key) {
+    console.warn(`Set operation on key "${String(key)}" failed: target is readonly.`, target)
+    return true
+  },
+  deleteProperty(target, key) {
+    console.warn(`Delete operation on key "${String(key)}" failed: target is readonly.`, target)
+    return true
+  },
 }
