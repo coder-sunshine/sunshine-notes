@@ -32,11 +32,11 @@
 
       // state.indexOf(2)
 
-      const obj = { a: 1 }
-      const arr = [1, obj, 3]
-      const state = reactive(arr)
+      // const obj = { a: 1 }
+      // const arr = [1, obj, 3]
+      // const state = reactive(arr)
 
-      console.log(state.indexOf(obj))
+      // console.log(state.indexOf(obj))
       // console.log(state.indexOf(reactive(obj)))
 
       // const idx = state.indexOf(reactive(obj))
@@ -44,6 +44,13 @@
       // console.log(state['__v_raw'])
       // console.log(toRaw(state))
       // console.log(state)
+
+      // 数组长度问题
+      const arr = [1, 2, , 4, 5]
+      const state = reactive(arr)
+      state[0] = 99
+      state[2] = 100
+      state[10] = 1000
     </script>
   </body>
 </html>

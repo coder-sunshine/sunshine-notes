@@ -321,3 +321,59 @@ console.log(state.indexOf(reactive(obj)))
 ![20260331163400](https://tuchuang.coder-sunshine.top/images/20260331163400.png)
 
 可以看到这个时候就能正常找到了，而且会发现之前每次都还需要 has 判断，现在也没有触发 has 了，也没有去收集 indexOf 这些依赖了。
+
+## 数组长度的相关问题
+
+```ts
+const arr = [1, 2, , 4, 5]
+const state = reactive(arr)
+state[0] = 99 // set
+state[2] = 100 // add
+state[10] = 1000 // add
+```
+
+![20260401142110](https://tuchuang.coder-sunshine.top/images/20260401142110.png)
+
+当数组在写入值的时候，某个位置上有值，当然是`set`，某个位置上没有值，是`add`，这些都没有问题。但是仔细思考`state[10] = 1000`\*\*应该是少了一种操作，因为我们这样做之后，数组的长度是发生了变化的，数组的长度变化，肯定会对相应的调用产生影响，因此这里`少了一步对数组长度变化的处理`。
+
+### 数组 length 被`隐式修改`的处理办法
+
+```ts
+function set(target: Record<string | symbol, unknown>, key: string | symbol, value: unknown, receiver: object): boolean {
+  // 判断是新增还是修改
+  const type = hasOwn(target, key) ? TriggerOpTypes.SET : TriggerOpTypes.ADD
+
+  const oldValue = target[key]
+
+  const targetIsArray = isArray(target)
+
+  // 旧值的长度
+  const oldLen = targetIsArray ? target.length : 0
+
+  // 设置对象的相应属性值
+  const result = Reflect.set(target, key, value, receiver)
+
+  if (!result) {
+    return result
+  }
+
+  // 这里代表设置成功
+  const newLen = targetIsArray ? target.length : 0
+
+  if (hasChanged(value, oldValue) || type === TriggerOpTypes.ADD) {
+    trigger(target, type, key)
+    if (targetIsArray && oldLen !== newLen) {
+      // 数组长度变化了，但是不是直接改的 length 属性
+      if (key !== 'length') {
+        trigger(target, TriggerOpTypes.SET, 'length')
+      }
+    }
+  }
+
+  return result
+}
+```
+
+![20260401154943](https://tuchuang.coder-sunshine.top/images/20260401154943.png)
+
+也就是当数组长度新旧不相等的时候，需要手动触发 `length` 属性的更新

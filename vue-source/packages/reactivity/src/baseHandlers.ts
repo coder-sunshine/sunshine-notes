@@ -61,20 +61,36 @@ function get(target: object, key: string | symbol, receiver: object): any {
 }
 
 function set(target: Record<string | symbol, unknown>, key: string | symbol, value: unknown, receiver: object): boolean {
-  // 判断对象是否有这个属性
-  const hadKey = hasOwn(target, key)
+  // 判断是新增还是修改
+  const type = hasOwn(target, key) ? TriggerOpTypes.SET : TriggerOpTypes.ADD
 
   const oldValue = target[key]
 
-  // 原来就没这个属性，那说明是新增
-  if (!hadKey) {
-    trigger(target, TriggerOpTypes.ADD, key)
-  } else if (hasChanged(value, oldValue)) {
-    trigger(target, TriggerOpTypes.SET, key)
-  }
+  const targetIsArray = isArray(target)
+
+  // 旧值的长度
+  const oldLen = targetIsArray ? target.length : 0
 
   // 设置对象的相应属性值
   const result = Reflect.set(target, key, value, receiver)
+
+  if (!result) {
+    return result
+  }
+
+  // 这里代表设置成功
+  const newLen = targetIsArray ? target.length : 0
+
+  if (hasChanged(value, oldValue) || type === TriggerOpTypes.ADD) {
+    trigger(target, type, key)
+    if (targetIsArray && oldLen !== newLen) {
+      // 数组长度变化了，但是不是直接改的 length 属性
+      if (key !== 'length') {
+        trigger(target, TriggerOpTypes.SET, 'length')
+      }
+    }
+  }
+
   return result
 }
 
