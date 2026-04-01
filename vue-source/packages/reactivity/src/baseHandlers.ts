@@ -1,6 +1,6 @@
 import { hasChanged, hasOwn, isArray, isObject } from '@vue/shared'
 
-import { ITERATE_KEY, track, trigger } from './effect'
+import { enableTracking, ITERATE_KEY, pauseTracking, track, trigger } from './effect'
 import { TrackOpTypes, TriggerOpTypes } from './operations'
 import { reactive, ReactiveFlags, targetMap, toRaw } from './reactive'
 
@@ -28,6 +28,15 @@ const arrayInstrumentations: Record<string, Function> = {}
     } else {
       return res
     }
+  }
+})
+;(['push', 'pop', 'shift', 'unshift', 'splice'] as const).forEach(key => {
+  const method = Array.prototype[key] as any
+  arrayInstrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+    pauseTracking()
+    const res = method.apply(this, args)
+    enableTracking()
+    return res
   }
 })
 

@@ -434,3 +434,70 @@ function set(target: Record<string | symbol, unknown>, key: string | symbol, val
 ```
 
 ![20260401155522](https://tuchuang.coder-sunshine.top/images/20260401155522.png)
+
+### push,pop 等方法 length 问题
+
+```ts
+const arr = [1, 2, 3, 4, 5, 6]
+const state = reactive(arr)
+state.push(7)
+```
+
+![20260401160228](https://tuchuang.coder-sunshine.top/images/20260401160228.png)
+
+我们调用的是`push`方法，当然就应该对`push`去进行依赖收集，`push`了之后当然伴随着新的值的增加和数组长度的增加，这些都没有问题，但是`length`这个属性该不该收集呢？
+
+从代码逻辑上来说，`push`方法肯定会查找到之前的`length`，然后对数组做长度`+1`的操作，这是没有疑问的。
+
+但是对于我们依赖收集来说，还需要在`push`方法中去收集`length`属性吗？其实是不需要的。
+
+而且这很容易引起`死循环`的问题，当然这个问题也并不是一开始就被发现的，vue3在其版本`3.0.0-rc.12`中修复了这个问题[`issue`](https://github.com/vuejs/core/issues/2137)
+
+那怎么让`push`方法不去收集`length`属性呢？方式有很多，最简单的其实就直接`在代理对象中暂停依赖收集`
+
+```ts
+// vue-source/packages/reactivity/src/effect.ts
+import { TrackOpTypes, TriggerOpTypes } from './operations'
+
+// 用来表示对对象的“迭代依赖”的标识
+export const ITERATE_KEY = Symbol('')
+
+// 是否进行依赖收集的开关
+let shouldTrack = true
+
+export function pauseTracking() {
+  shouldTrack = false
+}
+
+export function enableTracking() {
+  shouldTrack = true
+}
+
+export function track(target: object, type: TrackOpTypes, key: unknown) {
+  if (!shouldTrack) {
+    return
+  }
+  console.log(`%c依赖收集: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #f40')
+}
+
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  console.log(`%c派发更新: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #0f0')
+}
+```
+
+```ts
+// vue-source/packages/reactivity/src/baseHandlers.ts
+;(['push', 'pop', 'shift', 'unshift', 'splice'] as const).forEach(key => {
+  const method = Array.prototype[key] as any
+  arrayInstrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+    pauseTracking()
+    const res = method.apply(this, args)
+    enableTracking()
+    return res
+  }
+})
+```
+
+![20260401160722](https://tuchuang.coder-sunshine.top/images/20260401160722.png)
+
+这样加个开关，当调用这几个方法的时候就不会去收集依赖了
