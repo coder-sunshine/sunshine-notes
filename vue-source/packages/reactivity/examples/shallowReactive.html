@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>shallowReactive</title>
+  </head>
+  <body>
+    <script type="module">
+      import { reactive, shallowReactive } from '../dist/reactivity.esm.js'
+
+      const obj1 = {
+        a: 1,
+        b: 2,
+        c: {
+          d: 3,
+        },
+      }
+
+      const obj2 = {
+        a: 1,
+        b: 2,
+        c: {
+          d: 3,
+        },
+      }
+
+      const state1 = reactive(obj1)
+      console.log(state1.c)
+
+      const state2 = shallowReactive(obj2)
+      console.log(state2.c)
+    </script>
+  </body>
+</html>

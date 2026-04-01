@@ -1,0 +1,149 @@
+---
+title: shallowReactive
+description: 浅层响应式对象代理对象
+---
+
+**浅层响应式对象代理对象在处理响应式的时候，根据条件判断，不进行对象属性的递归处理即可**
+
+```ts ins={10-13}
+function createGetter(isReadonly = false, shallow = false) {
+  return function get(target: object, key: string | symbol, receiver: object): any {
+    // ... 其他代码省略
+
+    // 只有在非只读的情况下才会收集依赖
+    if (!isReadonly) {
+      track(target, TrackOpTypes.GET, key)
+    }
+
+    // 如果是浅层代理，直接返回结果
+    if (shallow) {
+      return result
+    }
+
+    // 如果整个对象是只读的，那么这个对象的属性是对象，也应该是只读的
+    if (isObject(result)) {
+      return isReadonly ? readonly(result) : reactive(result)
+    }
+
+    return result
+  }
+}
+```
+
+之前的 `get` 通过工厂函数的模式进行了处理，其实 `set` 也可以，虽然现在还没有什么用处，但是可以先写出来
+
+```ts
+function createSetter(_shallow = false) {
+  return function set(target: Record<string | symbol, unknown>, key: string | symbol, value: unknown, receiver: object): boolean {
+    // 判断是新增还是修改
+    const type = hasOwn(target, key) ? TriggerOpTypes.SET : TriggerOpTypes.ADD
+
+    const oldValue = target[key]
+
+    const targetIsArray = isArray(target)
+
+    // 旧值的长度
+    const oldLen = targetIsArray ? target.length : 0
+
+    // 设置对象的相应属性值
+    const result = Reflect.set(target, key, value, receiver)
+
+    if (!result) {
+      return result
+    }
+
+    // 这里代表设置成功
+    const newLen = targetIsArray ? target.length : 0
+
+    if (hasChanged(value, oldValue) || type === TriggerOpTypes.ADD) {
+      trigger(target, type, key)
+      if (targetIsArray && oldLen !== newLen) {
+        // 数组长度变化了，但是不是直接改的 length 属性
+        if (key !== 'length') {
+          trigger(target, TriggerOpTypes.SET, 'length')
+        } else {
+          // 操作的是 key，并且 key 的长度小于旧的长度，则需要删除（长度变长不需要处理）
+          for (let i = newLen; i < oldLen; i++) {
+            trigger(target, TriggerOpTypes.DELETE, i + '')
+          }
+        }
+      }
+    }
+
+    return result
+  }
+}
+```
+
+**然后分别创建对应的 `set` 函数**
+
+```ts
+const get = createGetter()
+const readonlyGet = createGetter(true)
+const shallowGet = createGetter(false, true)
+
+const set = createSetter()
+// 暂时用不上
+const shallowSet = createSetter(true)
+
+export const mutableHandlers: ProxyHandler<object> = {
+  get,
+  set,
+  has,
+  ownKeys,
+  deleteProperty,
+}
+
+export const readonlyHandlers: ProxyHandler<object> = {
+  get: readonlyGet,
+  set(target, key) {
+    console.warn(`Set operation on key "${String(key)}" failed: target is readonly.`, target)
+    return true
+  },
+  deleteProperty(target, key) {
+    console.warn(`Delete operation on key "${String(key)}" failed: target is readonly.`, target)
+    return true
+  },
+}
+
+export const shallowReactiveHandlers: ProxyHandler<object> = extend({}, mutableHandlers, {
+  get: shallowGet,
+  set: shallowSet,
+})
+```
+
+```ts
+export const extend = Object.assign
+```
+
+最后测试一下
+
+```ts
+import { reactive, shallowReactive } from '../dist/reactivity.esm.js'
+
+const obj1 = {
+  a: 1,
+  b: 2,
+  c: {
+    d: 3,
+  },
+}
+
+const obj2 = {
+  a: 1,
+  b: 2,
+  c: {
+    d: 3,
+  },
+}
+
+const state1 = reactive(obj1)
+console.log(state1.c)
+
+const state2 = shallowReactive(obj2)
+console.log(state2.c)
+```
+
+![20260401175624](https://tuchuang.coder-sunshine.top/images/20260401175624.png)
+
+可以看到一个是响应式对象，一个不是响应式对象

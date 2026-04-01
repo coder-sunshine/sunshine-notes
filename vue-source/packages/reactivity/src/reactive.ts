@@ -1,6 +1,6 @@
 import { isObject } from '@vue/shared'
 
-import { mutableHandlers, readonlyHandlers } from './baseHandlers'
+import { mutableHandlers, readonlyHandlers, shallowReactiveHandlers } from './baseHandlers'
 
 export const enum ReactiveFlags {
   SKIP = '__v_skip',
@@ -76,4 +76,9 @@ export function readonly<T extends object>(target: T): DeepReadonly<T> {
 
 export function toRaw<T>(observed: T): T {
   return (observed && toRaw((observed as Target)[ReactiveFlags.RAW])) || observed
+}
+
+// 浅层代理
+export function shallowReactive<T extends object>(target: T): T {
+  return createReactiveObject(target, false, shallowReactiveHandlers)
 }
