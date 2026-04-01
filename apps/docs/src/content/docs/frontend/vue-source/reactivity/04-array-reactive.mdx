@@ -377,3 +377,60 @@ function set(target: Record<string | symbol, unknown>, key: string | symbol, val
 ![20260401154943](https://tuchuang.coder-sunshine.top/images/20260401154943.png)
 
 也就是当数组长度新旧不相等的时候，需要手动触发 `length` 属性的更新
+
+### 显式修改数组长度
+
+当然上面是隐式设置数组length可能会出现的问题，那如果直接设置数组长度会有什么问题吗？
+
+把`length`变大和变小都触发了`set`，这好像没什么问题。但是仔细思考一下，当`length`变小的时候，仅仅就只是触发了`length`长度的改变吗？
+
+```ts
+const arr = [1, 2, 3, 4, 5, 6]
+const state = reactive(arr)
+state.length = 3
+```
+
+数组的长度变小了，其实相当于是把后面几个都给删掉了
+
+```ts {28-33}
+function set(target: Record<string | symbol, unknown>, key: string | symbol, value: unknown, receiver: object): boolean {
+  // 判断是新增还是修改
+  const type = hasOwn(target, key) ? TriggerOpTypes.SET : TriggerOpTypes.ADD
+
+  const oldValue = target[key]
+
+  const targetIsArray = isArray(target)
+
+  // 旧值的长度
+  const oldLen = targetIsArray ? target.length : 0
+
+  // 设置对象的相应属性值
+  const result = Reflect.set(target, key, value, receiver)
+
+  if (!result) {
+    return result
+  }
+
+  // 这里代表设置成功
+  const newLen = targetIsArray ? target.length : 0
+
+  if (hasChanged(value, oldValue) || type === TriggerOpTypes.ADD) {
+    trigger(target, type, key)
+    if (targetIsArray && oldLen !== newLen) {
+      // 数组长度变化了，但是不是直接改的 length 属性
+      if (key !== 'length') {
+        trigger(target, TriggerOpTypes.SET, 'length')
+      } else {
+        // 操作的是 key，并且 key 的长度小于旧的长度，则需要删除（长度变长不需要处理）
+        for (let i = newLen; i < oldLen; i++) {
+          trigger(target, TriggerOpTypes.DELETE, i + '')
+        }
+      }
+    }
+  }
+
+  return result
+}
+```
+
+![20260401155522](https://tuchuang.coder-sunshine.top/images/20260401155522.png)

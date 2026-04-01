@@ -46,11 +46,15 @@
       // console.log(state)
 
       // 数组长度问题
-      const arr = [1, 2, , 4, 5]
+      // const arr = [1, 2, , 4, 5]
+      // const state = reactive(arr)
+      // state[0] = 99
+      // state[2] = 100
+      // state[10] = 1000
+
+      const arr = [1, 2, 3, 4, 5, 6]
       const state = reactive(arr)
-      state[0] = 99
-      state[2] = 100
-      state[10] = 1000
+      state.length = 3
     </script>
   </body>
 </html>

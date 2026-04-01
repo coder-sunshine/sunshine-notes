@@ -87,6 +87,11 @@ function set(target: Record<string | symbol, unknown>, key: string | symbol, val
       // 数组长度变化了，但是不是直接改的 length 属性
       if (key !== 'length') {
         trigger(target, TriggerOpTypes.SET, 'length')
+      } else {
+        // 操作的是 key，并且 key 的长度小于旧的长度，则需要删除（长度变长不需要处理）
+        for (let i = newLen; i < oldLen; i++) {
+          trigger(target, TriggerOpTypes.DELETE, i + '')
+        }
       }
     }
   }
