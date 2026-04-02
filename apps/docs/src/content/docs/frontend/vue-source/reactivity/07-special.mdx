@@ -1,0 +1,331 @@
+---
+title: 一些特殊情况的排除
+description: 一些特殊情况的排除
+---
+
+## 核心结论
+
+在响应式系统里，不是所有属性访问都应该被收集为依赖。
+
+真正应该被追踪的是业务数据，例如：
+
+- `state.count`
+- `state.user.name`
+- `state.list.length`
+
+而像下面这些访问：
+
+- `state.__proto__`
+- `state[Symbol.iterator]`
+- `state[Symbol.toStringTag]`
+
+它们更偏向 JavaScript 的原生协议和对象元信息，不属于业务状态本身，所以通常需要提前排除。
+
+1. `读业务数据，才收集依赖`
+2. `读协议信息，不收集依赖`
+3. `读原型对象，不递归代理`
+
+## 为什么要排除
+
+`get` 拦截里正常会发生两件事：
+
+```ts
+const result = Reflect.get(target, key, receiver)
+
+if (!isReadonly) {
+  track(target, TrackOpTypes.GET, key)
+}
+
+if (isObject(result)) {
+  return isReadonly ? readonly(result) : reactive(result)
+}
+
+return result
+```
+
+这意味着只要读取了属性，就会：
+
+1. 收集依赖
+2. 在返回值是对象时继续递归代理
+
+问题在于，`__proto__` 和一些内置 `Symbol` 并不适合走这套流程。
+
+## 为什么 `__proto__` 要排除
+
+`__proto__` 访问的是对象的原型，不是业务字段。
+
+例如：
+
+```ts
+const obj = { a: 1 }
+console.log(obj.__proto__ === Object.prototype) // true
+```
+
+如果不排除，流程会变成：
+
+```ts
+const result = Reflect.get(target, '__proto__', receiver)
+track(target, TrackOpTypes.GET, '__proto__')
+
+if (isObject(result)) {
+  return reactive(result)
+}
+```
+
+这样会产生两个问题。
+
+### 问题 1：依赖污染
+
+访问 `__proto__` 只是读取原型链信息，并不是读取状态。
+
+但如果也被 `track`，依赖图中就会出现无意义的依赖：
+
+```ts
+effect(() => {
+  console.log(state.__proto__)
+})
+```
+
+这里收集到的不是业务依赖，而是对象结构依赖。
+
+### 问题 2：原型对象被错误代理
+
+`state.__proto__` 返回的是 `Object.prototype`。
+
+如果继续递归 `reactive(result)`，就等于把原型对象也纳入了响应式系统。
+
+这会让行为变得很怪：
+
+```ts
+const state = reactive({ a: 1 })
+
+console.log(state.__proto__ === Object.prototype)
+// 直觉上希望是 true
+// 但如果 __proto__ 没排除，可能拿到的是 reactive(Object.prototype)
+```
+
+## 为什么内置 `Symbol` 要排除
+
+内置 `Symbol` 往往代表 JavaScript 的原生协议，而不是业务字段。
+
+典型例子：
+
+- `Symbol.iterator`
+- `Symbol.toStringTag`
+- `Symbol.toPrimitive`
+
+### 例子 1：`Symbol.iterator`
+
+```ts
+const myIterable = {
+  items: [1, 2, 3],
+  [Symbol.iterator]() {
+    let index = 0
+    return {
+      next: () => ({
+        value: this.items[index++],
+        done: index > this.items.length,
+      }),
+    }
+  },
+}
+
+for (const item of myIterable) {
+  console.log(item)
+}
+```
+
+`for...of` 在执行前，会先读取：
+
+```ts
+myIterable[Symbol.iterator]
+```
+
+如果不排除，这次读取也会被收集为依赖。
+
+但这次访问真正表示的是：
+
+> 这个对象如何提供迭代器
+
+而不是：
+
+> 这个对象的业务状态是什么
+
+### 例子 2：`Symbol.toStringTag`
+
+```ts
+const myObject = {
+  [Symbol.toStringTag]: 'MyCustomType',
+}
+
+console.log(Object.prototype.toString.call(myObject))
+// [object MyCustomType]
+```
+
+这段逻辑内部会读取：
+
+```ts
+myObject[Symbol.toStringTag]
+```
+
+如果也把它当成普通依赖来追踪，就会让调试、类型判断、协议行为也进入响应式依赖系统。
+
+## 如果不排除，会带来什么问题
+
+### 1. 依赖图被污染
+
+effect 本来应该依赖真正的状态字段：
+
+- `count`
+- `name`
+- `length`
+
+结果却多出：
+
+- `__proto__`
+- `Symbol.iterator`
+- `Symbol.toStringTag`
+
+这些通常都不是我们关心的业务依赖。
+
+### 2. 代理边界失控
+
+像 `__proto__` 返回的是原型对象，不属于业务数据树。
+
+如果也继续递归代理，就会把不该代理的对象也拖进响应式系统。
+
+### 3. 框架过度干预 JavaScript 原生行为
+
+这些键本来是语言协议的一部分。
+如果把它们当成普通数据属性来处理，框架就会过度介入原生运行时行为。
+
+### 4. 调试成本变高
+
+最麻烦的通常不是“直接报错”，而是：
+
+- 明明没读业务状态
+- 却进入了依赖收集
+- 明明只是一次原生协议访问
+- 却和响应式系统纠缠在一起
+
+这种问题后面最难排查。
+
+## 代码里应该怎么处理
+
+核心思路就是：
+
+在 `track` 和递归代理之前，先把这些特殊 key 过滤掉。
+
+```ts
+export const isSymbol = (val: unknown): val is symbol => typeof val === 'symbol'
+```
+
+```ts {1-5,24-27}
+const builtInSymbols = new Set(
+  Object.getOwnPropertyNames(Symbol)
+    .map(key => (Symbol as any)[key])
+    .filter(isSymbol)
+)
+
+function createGetter(isReadonly = false, shallow = false) {
+  return function get(target: object, key: string | symbol, receiver: object): any {
+    // 如果进入到get方法，说明肯定是一个proxy代理对象
+    // 如果访问的是__v_isReactive，返回true
+    if (key === ReactiveFlags.IS_REACTIVE) {
+      return true
+    } else if (key === ReactiveFlags.IS_READONLY) {
+      // 如果访问的是ReactiveFlags.IS_READONLY, 返回true
+      return isReadonly
+    } else if (key === ReactiveFlags.RAW && receiver === (isReadonly ? readonlyMap : targetMap).get(target)) {
+      // 访问的是 __v_raw 属性，并且是代理对象本身在访问
+      return target
+    }
+
+    // 返回对象的相应属性值
+    const result = Reflect.get(target, key, receiver)
+
+    const keyIsSymbol = isSymbol(key)
+    if (keyIsSymbol ? builtInSymbols.has(key as symbol) : key === `__proto__`) {
+      return result
+    }
+
+    // 只有在非只读的情况下才会收集依赖
+    if (!isReadonly) {
+      track(target, TrackOpTypes.GET, key)
+    }
+
+    // 如果是浅层代理，直接返回结果
+    if (shallow) {
+      return result
+    }
+
+    // 判断是不是数组，如果是数组，并且 key 是 arrayInstrumentations 对应的方法
+    const targetIsArray = isArray(target)
+    if (targetIsArray && hasOwn(arrayInstrumentations, key)) {
+      return Reflect.get(arrayInstrumentations, key, receiver)
+    }
+
+    // 判断是不是对象，是对象就递归代理
+    // 如果整个对象是只读的，那么这个对象的属性是对象，也应该是只读的
+    if (isObject(result)) {
+      return isReadonly ? readonly(result) : reactive(result)
+    }
+
+    return result
+  }
+}
+```
+
+同时之前写的 has 也需要排除掉
+
+```ts
+function has(target: object, key: string | symbol): boolean {
+  const result = Reflect.has(target, key)
+  if (!isSymbol(key) || !builtInSymbols.has(key)) {
+    // 收集依赖
+    track(target, TrackOpTypes.HAS, key)
+  }
+  return result
+}
+```
+
+## 一个对比示例
+
+### 正常应该追踪的访问
+
+```ts
+const state = reactive({
+  count: 1,
+})
+
+effect(() => {
+  console.log(state.count)
+})
+```
+
+这里依赖的是 `count`，这是合理的，因为它是业务数据。
+
+### 不应该重点追踪的访问
+
+```ts
+const state = reactive([1, 2, 3])
+
+effect(() => {
+  const iterator = state[Symbol.iterator]
+  console.log(typeof iterator)
+})
+```
+
+这里读取的是数组的迭代器协议，不是数组内容本身。
+如果也建立依赖，意义通常不大。
+
+## 总结
+
+排除 `__proto__` 和内置 `Symbol`，不是可有可无的优化，而是在保护响应式系统的边界。
+
+它的意义是：
+
+- 避免无意义依赖进入依赖图
+- 避免原型对象被错误代理
+- 避免框架过度干扰 JavaScript 原生协议
+- 让响应式系统只关注真正的业务状态

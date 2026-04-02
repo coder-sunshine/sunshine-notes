@@ -1,8 +1,14 @@
-import { extend, hasChanged, hasOwn, isArray, isObject } from '@vue/shared'
+import { extend, hasChanged, hasOwn, isArray, isObject, isSymbol } from '@vue/shared'
 
 import { enableTracking, ITERATE_KEY, pauseTracking, track, trigger } from './effect'
 import { TrackOpTypes, TriggerOpTypes } from './operations'
 import { reactive, ReactiveFlags, readonly, readonlyMap, targetMap, toRaw } from './reactive'
+
+const builtInSymbols = new Set(
+  Object.getOwnPropertyNames(Symbol)
+    .map(key => (Symbol as any)[key])
+    .filter(isSymbol)
+)
 
 const arrayInstrumentations: Record<string, Function> = {}
 
@@ -56,6 +62,12 @@ function createGetter(isReadonly = false, shallow = false) {
 
     // 返回对象的相应属性值
     const result = Reflect.get(target, key, receiver)
+
+    const keyIsSymbol = isSymbol(key)
+
+    if (keyIsSymbol ? builtInSymbols.has(key as symbol) : key === `__proto__`) {
+      return result
+    }
 
     // 只有在非只读的情况下才会收集依赖
     if (!isReadonly) {
@@ -125,9 +137,11 @@ function createSetter(_shallow = false) {
 }
 
 function has(target: object, key: string | symbol): boolean {
-  // 收集依赖
-  track(target, TrackOpTypes.HAS, key)
   const result = Reflect.has(target, key)
+  if (!isSymbol(key) || !builtInSymbols.has(key)) {
+    // 收集依赖
+    track(target, TrackOpTypes.HAS, key)
+  }
   return result
 }
 
