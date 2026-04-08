@@ -1,0 +1,260 @@
+---
+title: reactive 和 effect 衔接
+description: 把 reactive、effect、track、trigger 串成一个完整闭环
+---
+
+单独看 `reactive`，本质上就是一层 `Proxy` 外壳：
+
+- `get` 能拦截读取
+- `set` 能拦截修改
+- `has`、`ownKeys`、`deleteProperty` 这些也能拦截
+
+但是只有拦截还不够。
+
+如果只是“知道有人读了”“知道有人改了”，而不知道：
+
+- 是谁在读
+- 读的是哪个对象的哪个属性
+- 改了之后应该通知谁
+
+那这套系统还是跑不起来。
+
+所以接下来真正要做的，不是继续往 `reactive` 里塞逻辑，而是把 `reactive` 和 `effect` 接起来。
+
+## 先说结论
+
+真正要解决的问题只有一句话：
+
+**读取属性的时候，把当前 effect 记下来；修改属性的时候，把之前记下来的 effect 找出来重新执行。**
+
+围绕这句话，整体设计就顺出来了：
+
+1. `effect(fn)` 执行时，要记录当前正在运行的是哪个 effect
+2. `reactive` 的 `get` 拦截里调用 `track()进行依赖收集`
+3. `track()` 要把 `target`、`key` 和当前 effect 建立关系
+4. `reactive` 的 `set` 拦截里调用 `trigger()`
+5. `trigger()` 再根据 `target` 和 `key` 把相关 effect 找出来执行，也就是`派发更新`
+
+其实响应式主干就这么几步。
+
+## 对这几个角色的理解
+
+### `reactive`
+
+`reactive` 负责把普通对象变成代理对象。
+
+它本身不负责存依赖，也不负责调度 effect。
+它更像“入口壳子”，把读写操作都拦下来，然后把事情转交给：
+
+- `track`
+- `trigger`
+
+也就是说，`reactive` 做的是“把拦截点暴露出来”。
+
+### `effect`
+
+`effect` 负责提供“当前上下文”。
+
+如果没有 `effect`，`track()` 根本不知道当前是谁在读数据。
+
+所以 `effect(fn)` 的核心职责不是“执行函数”这么简单，而是：
+
+- 执行前，把当前 `effect` 设成 `active` 状态
+- 执行函数
+- 执行结束后，再把 `active` 状态恢复
+
+这样 `track()` 才能知道：
+
+> 现在这个读取，是哪个 `effect` 触发的
+
+### `track`
+
+`track` 负责`收集依赖`。
+
+它关心的是三件事：
+
+- 哪个对象
+- 哪个 key
+- 哪个 effect 依赖了这个 key
+
+### `trigger`
+
+`trigger` 负责派发更新。
+
+它做的事情正好和 `track` 相反：
+
+- 已知哪个对象的哪个 key 变了
+- 去找到之前依赖它的 effect
+- 然后重新执行这些 effect
+
+## 为什么依赖结构要设计成 WeakMap -> Map -> Set
+
+```txt
+WeakMap
+  target1 -> Map
+             key1 -> Set(effect1, effect2)
+             key2 -> Set(effect3)
+
+  target2 -> Map
+             key1 -> Set(effect4)
+```
+
+现在把它拆开理解会更顺一点。
+
+### 第一层：`WeakMap`
+
+第一层用来存“对象级别”的依赖关系。
+
+key 是原始对象 `target`，value 是一个 `Map`。
+
+之所以用 `WeakMap`，是因为 key 是对象，而且对象如果以后没人引用了，应该允许它被垃圾回收，不想因为依赖表把它强行留住。
+
+这一层回答的是：
+
+> 这个对象身上，哪些属性是有依赖的？
+
+### 第二层：`Map`
+
+这一层是某个对象内部的“属性依赖表”。
+
+key 是具体属性，比如：
+
+- `'count'`
+- `'name'`
+- `'length'`
+- `ITERATE_KEY`
+
+value 是一个 `Set`。
+
+这一层回答的是：
+
+> 这个对象的哪个 key 被依赖了？
+
+### 第三层：`Set`
+
+这里面放的就是真正的 effect。
+
+比如：
+
+```ts
+effect(() => {
+  console.log(state.count)
+})
+```
+
+当 `state.count` 被读取时，这个 effect 就会被放进 `count` 对应的 `Set` 里。
+
+之所以用 `Set`，主要是为了**去重**。
+
+如果同一个 effect 在一次执行里多次读到同一个 key，最终也只应该收集一次。
+
+这一层回答的是：
+
+> 依赖这个 key 的 effect 有哪些？
+
+## 为什么不是直接 `target -> effect`
+
+因为响应式不是“对象级别整体更新”，而是“尽量按 `key` 精准更新”。
+
+比如：
+
+```ts
+const state = reactive({
+  count: 0,
+  name: 'vue',
+})
+
+effect(() => {
+  console.log(state.count)
+})
+```
+
+这里 effect 只依赖 `count`，不依赖 `name`。
+
+如果只存成：
+
+```txt
+target -> Set(effect)
+```
+
+那后面改 `name` 的时候，也会把依赖 `count` 的 effect 触发掉。这样粒度太粗了。
+
+所以必须多一层 `key -> Set(effect)`。
+
+## 一次最小闭环到底是怎么跑起来的
+
+例子：
+
+```ts
+const state = reactive({ count: 0 })
+
+effect(() => {
+  console.log(state.count)
+})
+
+state.count++
+```
+
+这段代码的执行过程，可以拆成两段。
+
+### 第一段：注册依赖
+
+先执行：
+
+```ts
+effect(() => {
+  console.log(state.count)
+})
+```
+
+过程大概是这样：
+
+1. `effect(fn)` 被调用
+2. 内部把当前 effect 记录下来，比如记到 `activeEffect`
+3. 然后立刻执行这个 `fn`
+4. `fn` 里读取了 `state.count`
+5. 读取 `state.count` 会触发 `Proxy` 的 `get`
+6. `get` 里调用 `track(target, TrackOpTypes.GET, key)`
+7. `track()` 发现当前有 `activeEffect`
+8. 于是把这条关系记到依赖表里
+
+最后得到的关系就是：
+
+```txt
+targetMap
+  rawState -> Map
+              'count' -> Set(currentEffect)
+```
+
+这一步的重点不是更新，而是“先把依赖登记好”。
+
+### 第二段：触发更新
+
+然后执行：
+
+```ts
+state.count++
+```
+
+这一步本质上会触发 `set`。
+
+大概流程是：
+
+1. `set` 被触发
+2. `set` 里判断这是 `SET` 还是 `ADD`
+3. 然后调用 `trigger(target, TriggerOpTypes.SET, key)`
+4. `trigger()` 根据 `target` 找到 `depsMap`
+5. 再根据 `key` 找到对应的 `Set(effect)`
+6. 把里面的 effect 重新执行
+
+这样前面那个：
+
+```ts
+effect(() => {
+  console.log(state.count)
+})
+```
+
+就会再跑一遍。
+
+这时页面、控制台或者别的依赖结果，也就跟着更新了。

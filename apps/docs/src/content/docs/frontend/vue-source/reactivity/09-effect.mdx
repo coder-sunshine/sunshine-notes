@@ -1,0 +1,87 @@
+---
+title: effect 的实现
+description: effect 的实现过程
+---
+
+effect 是响应式中的核心函数，后续很多功能也是基于 effect 实现，例如：`watch`、`computed` 等等。
+
+## effect 基础实现
+
+```ts
+import { reactive, effect } from '../dist/reactivity.esm.js'
+
+const state = reactive({ count: 1 })
+
+effect(() => {
+  console.log(state.count)
+})
+state.count++
+```
+
+分析这个代码，effect 里面的函数，会执行一次，然后会收集依赖，当依赖变化时，会重新执行函数。
+
+首先把 effect 函数创建出来。
+
+```ts
+export interface ReactiveEffect<T = any> {
+  (): T // 代表没有参数，返回值为 T 的函数
+}
+
+// 当前正在执行的 effect
+let activeEffect: ReactiveEffect | undefined
+
+export function effect<T = any>(fn: () => T) {
+  // 当 effect 执行时，将其设置为当前激活的副作用函数
+  activeEffect = fn
+  // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
+  fn()
+  // 当 effect 执行完成后，将其设置为 undefined
+  activeEffect = undefined
+}
+```
+
+- 创建了 `activeEffect` 变量，用来存储当前正在执行的 effect
+- 当 effect 执行时，将其设置为当前激活的副作用函数
+- 当 effect 执行完成后，将其设置为 `undefined`
+- fn 在执行的过程中，就会`收集依赖`
+
+## track 函数 依赖收集
+
+**按照之前的响应式结构设计，对 track 进行修改。**
+
+```ts
+type Dep = Set<ReactiveEffect>
+type KeyToDepMap = Map<any, Dep>
+
+// 当前正在执行的 effect
+let activeEffect: ReactiveEffect | undefined
+
+const targetMap = new WeakMap<any, KeyToDepMap>()
+
+export function track(target: object, type: TrackOpTypes, key: unknown) {
+  // 暂停依赖收集开关，没有activeEffect或者shouldTrack为false时，不进行依赖收集
+  if (!shouldTrack || activeEffect === undefined) {
+    return
+  }
+  console.log(`%c依赖收集: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #f40')
+
+  // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
+  let depsMap = targetMap.get(target)
+  if (!depsMap) {
+    targetMap.set(target, (depsMap = new Map()))
+  }
+
+  // 再根据 key 从 depsMap 中获取对应的 dep，保存的是 effect 的集合
+  let dep = depsMap.get(key)
+  if (!dep) {
+    depsMap.set(key, (dep = new Set()))
+  }
+
+  // 最后将当前 effect 添加到 dep 中
+  dep.add(activeEffect!)
+}
+```
+
+**这样就实现了依赖收集**
+
+![20260408150227](https://tuchuang.coder-sunshine.top/images/20260408150227.png)

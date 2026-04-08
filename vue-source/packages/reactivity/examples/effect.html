@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>effect</title>
+  </head>
+  <body>
+    <script type="module">
+      import { reactive, effect } from '../dist/reactivity.esm.js'
+
+      const state = reactive({ count: 1 })
+
+      effect(() => {
+        console.log(state.count)
+      })
+
+      state.b
+
+      // effect(() => {
+      //   console.log(state.b)
+      // })
+
+      state.count++
+    </script>
+  </body>
+</html>
