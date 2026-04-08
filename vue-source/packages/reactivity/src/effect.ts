@@ -51,6 +51,21 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
 
 export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
   console.log(`%c派发更新: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #0f0')
+  // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
+  const depsMap = targetMap.get(target)
+  if (!depsMap) {
+    // 从未被追踪过，直接返回
+    return
+  }
+
+  // 再根据 key 从 depsMap 中获取对应的 deps，保存的是 effect 的集合
+  const deps = depsMap.get(key)
+  if (!deps) {
+    return
+  }
+
+  // 最后遍历 deps 中的所有 effect，执行它们
+  deps.forEach(effect => effect())
 }
 
 export function effect<T = any>(fn: () => T) {

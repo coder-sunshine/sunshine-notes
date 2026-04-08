@@ -85,3 +85,34 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
 **这样就实现了依赖收集**
 
 ![20260408150227](https://tuchuang.coder-sunshine.top/images/20260408150227.png)
+
+## trigger 函数 触发依赖更新
+
+上图可以看到，最后触发了 trigger 函数，trigger 函数目前还没实现逻辑,按照下面的顺序处理就行了
+
+- 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
+- 再根据 key 从 depsMap 中获取对应的 deps，保存的是 effect 的集合
+- 最后遍历 deps 中的所有 effect，执行它们
+
+```ts
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  console.log(`%c派发更新: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #0f0')
+  // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
+  const depsMap = targetMap.get(target)
+  if (!depsMap) {
+    // 从未被追踪过，直接返回
+    return
+  }
+
+  // 再根据 key 从 depsMap 中获取对应的 deps，保存的是 effect 的集合
+  const deps = depsMap.get(key)
+  if (!deps) {
+    return
+  }
+
+  // 最后遍历 deps 中的所有 effect，执行它们
+  deps.forEach(effect => effect())
+}
+```
+
+![20260408151626](https://tuchuang.coder-sunshine.top/images/20260408151626.png)
