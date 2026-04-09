@@ -71,14 +71,14 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
     targetMap.set(target, (depsMap = new Map()))
   }
 
-  // 再根据 key 从 depsMap 中获取对应的 dep，保存的是 effect 的集合
-  let dep = depsMap.get(key)
-  if (!dep) {
-    depsMap.set(key, (dep = new Set()))
+  // 再根据 key 从 depsMap 中获取对应的 deps，保存的是 effect 的集合
+  let deps = depsMap.get(key)
+  if (!deps) {
+    depsMap.set(key, (deps = new Set()))
   }
 
-  // 最后将当前 effect 添加到 dep 中
-  dep.add(activeEffect!)
+  // 最后将当前 effect 添加到 deps 中
+  deps.add(activeEffect!)
 }
 ```
 
@@ -116,3 +116,150 @@ export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
 ```
 
 ![20260408151626](https://tuchuang.coder-sunshine.top/images/20260408151626.png)
+
+## 问题处理
+
+目前还有些问题需要处理，例如分支切换，循环依赖等。
+
+- 分支切换问题：当依赖项变化时，需要根据新的依赖项，来清理旧的依赖项。
+- 循环依赖问题：当依赖项之间存在循环依赖时，需要避免无限循环。
+
+### effect 嵌套问题
+
+```ts
+const state = reactive({ count: 0 })
+
+effect(() => {
+  effect(() => {
+    console.log('第二个 effect 执行', state.count)
+  })
+  console.log('第一个 effect 执行', state.count)
+})
+
+setTimeout(() => {
+  state.count++
+}, 1000)
+```
+
+![20260408172605](https://tuchuang.coder-sunshine.top/images/20260408172605.png)
+
+分析：
+
+> effect 执行，又遇到了 effect，因为这里代码是同步的，所以会继续执行第二个 effect，然后再执行第一个 effect，但是当 state.count 变化后，只执行了第二个 effect，没有执行第一个。
+
+```ts {6-7}
+export function effect<T = any>(fn: () => T) {
+  // 当 effect 执行时，将其设置为当前激活的副作用函数
+  activeEffect = fn
+  // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
+  fn()
+  // 当 effect 执行完成后，将其设置为 undefined
+  activeEffect = undefined
+}
+```
+
+主要的就是上面在 `fn` 执行完毕后，又将 `activeEffect` 设置为 `undefined`，所以第二个 `effect` 会执行，但是第一个 `effect` 不会执行（因为当执行到第一个 `effect` 时，`activeEffect` 为 `undefined`）
+
+:::tip[解决方法]
+解决方法很简单，只需要搞一个栈 `effectStack`，用来存储当前正在执行的 `effect` 即可。这样在副作用函数执行时，将当前副作用函数压入栈顶，副作用函数执行完成之后，再从栈中弹出，并且，我们始终让`activeEffect`指向栈顶的副作用函数，这样也能做到一个响应式数据只会收集直接读取值的副作用函数，而且不会出现互相影响的情况。
+:::
+
+```ts ins={1-2,8-9,14-15,20-21} del={17-18}
+// 用来存储当前正在执行的 effect 栈
+const effectStack: ReactiveEffect[] = []
+
+export function effect<T = any>(fn: () => T) {
+  // 当 effect 执行时，将其设置为当前激活的副作用函数
+  activeEffect = fn
+
+  // 在 fn 函数调用之前，将当前 effect 压入栈顶
+  effectStack.push(fn)
+
+  // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
+  fn()
+
+  // 在 fn 函数调用之后，将当前 effect 从栈顶弹出
+  effectStack.pop()
+
+  // 当 effect 执行完成后，将其设置为 undefined
+  activeEffect = undefined
+
+  // 恢复 activeEffect 为栈顶的 effect
+  activeEffect = effectStack[effectStack.length - 1]
+}
+```
+
+```ts
+effect(() => {
+  effect(() => {
+    console.log('第二个 effect 执行', state.count)
+  })
+  console.log('第一个 effect 执行', state.count)
+})
+
+setTimeout(() => {
+  console.log('1s 后，count 增加 1')
+  state.count++
+}, 1000)
+```
+
+![20260409133113](https://tuchuang.coder-sunshine.top/images/20260409133113.png)
+
+- 定时器执行前
+
+1. 第二个 effect 执行
+2. 第一个 effect 执行
+
+- 定时器执行后
+
+state.count++ 会触发 trigger 执行
+
+1. 第二个 effect 执行 -> ✅ 栈顶是第二个 effect
+2. 第二个 effect 执行 -> ✅ 此时栈顶是第一个 effect，顺序执行，就会打印这个
+3. 第一个 effect 执行 -> ✅ 代码依次执行
+4. 第二个 effect 执行 -> ❌ 此时已经执行完了，不应该再打印了
+
+**从目前执行顺序分析，最后一次打印的是有问题的，为什么会这样呢？**
+
+因为在 trigger 执行时，会遍历 deps 中的所有 effect
+
+```ts
+// 目前是直接这样执行的
+deps.forEach(effect => effect())
+```
+
+但是由于在 effect 中，会不停的出栈入栈，会导致 deps 也会变化，所以要在 trigger 的时候创建一个副本，**把可变的 deps 拷贝成一个“本轮稳定不变”的执行集合**。
+
+```ts ins={19-26} del={16-17}
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  // console.log(`%c派发更新: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #0f0')
+  // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
+  const depsMap = targetMap.get(target)
+  if (!depsMap) {
+    // 从未被追踪过，直接返回
+    return
+  }
+
+  // 再根据 key 从 depsMap 中获取对应的 deps，保存的是 effect 的集合
+  const deps = depsMap.get(key)
+  if (!deps) {
+    return
+  }
+
+  // 最后遍历 deps 中的所有 effect，执行它们
+  deps.forEach(effect => effect())
+
+  // 执行effects中的副作用函数
+  const effects = new Set<ReactiveEffect>()
+
+  deps.forEach(effectFn => {
+    effects.add(effectFn)
+  })
+
+  effects.forEach(effect => effect())
+}
+```
+
+![20260409134939](https://tuchuang.coder-sunshine.top/images/20260409134939.png)
+
+这样的话就正常打印了

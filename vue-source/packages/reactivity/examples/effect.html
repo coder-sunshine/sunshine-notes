@@ -9,19 +9,19 @@
     <script type="module">
       import { reactive, effect } from '../dist/reactivity.esm.js'
 
-      const state = reactive({ count: 1 })
+      const state = reactive({ count: 0 })
 
       effect(() => {
-        console.log(state.count)
+        effect(() => {
+          console.log('第二个 effect 执行', state.count)
+        })
+        console.log('第一个 effect 执行', state.count)
       })
 
-      state.b
-
-      // effect(() => {
-      //   console.log(state.b)
-      // })
-
-      state.count++
+      setTimeout(() => {
+        console.log('1s 后，count 增加 1')
+        state.count++
+      }, 1000)
     </script>
   </body>
 </html>
