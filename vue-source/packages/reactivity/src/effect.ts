@@ -72,7 +72,10 @@ export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
   const effects = new Set<ReactiveEffect>()
 
   deps.forEach(effectFn => {
-    effects.add(effectFn)
+    // 如果当前副作用函数不是当前激活的副作用函数，才添加到 effects 中
+    if (effectFn !== activeEffect) {
+      effects.add(effectFn)
+    }
   })
 
   effects.forEach(effect => effect())

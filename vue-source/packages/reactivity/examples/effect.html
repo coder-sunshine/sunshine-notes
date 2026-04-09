@@ -11,17 +11,22 @@
 
       const state = reactive({ count: 0 })
 
-      effect(() => {
-        effect(() => {
-          console.log('第二个 effect 执行', state.count)
-        })
-        console.log('第一个 effect 执行', state.count)
-      })
+      // effect(() => {
+      //   effect(() => {
+      //     console.log('第二个 effect 执行', state.count)
+      //   })
+      //   console.log('第一个 effect 执行', state.count)
+      // })
 
-      setTimeout(() => {
-        console.log('1s 后，count 增加 1')
-        state.count++
-      }, 1000)
+      // setTimeout(() => {
+      //   console.log('1s 后，count 增加 1')
+      //   state.count++
+      // }, 1000)
+
+      effect(() => {
+        console.log('effect 执行', state.count)
+        state.count = state.count + 1
+      })
     </script>
   </body>
 </html>

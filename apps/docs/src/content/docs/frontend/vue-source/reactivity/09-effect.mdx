@@ -263,3 +263,31 @@ export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
 ![20260409134939](https://tuchuang.coder-sunshine.top/images/20260409134939.png)
 
 这样的话就正常打印了
+
+### 无限循环问题
+
+```ts
+effect(() => {
+  console.log('effect 执行', state.count)
+  state.count++
+})
+```
+
+![20260409142010](https://tuchuang.coder-sunshine.top/images/20260409142010.png)
+
+直接就栈溢出了
+
+可以把 `state.count++` 改成 `state.count = state.count + 1` ，在 `effect` 里面，又在收集依赖，又在触发更新，触发更新的时候又在收集依赖，就造成了无限循环
+
+只需要在 `trigger` 中，判断一下，是否是当前正在执行的 `effect`，如果不是，才添加到 `effects` 中就行了
+
+```ts ins={3,5}
+deps.forEach(effectFn => {
+  // 如果当前副作用函数不是当前激活的副作用函数，才添加到 effects 中
+  if (effectFn !== activeEffect) {
+    effects.add(effectFn)
+  }
+})
+```
+
+![20260409142621](https://tuchuang.coder-sunshine.top/images/20260409142621.png)
