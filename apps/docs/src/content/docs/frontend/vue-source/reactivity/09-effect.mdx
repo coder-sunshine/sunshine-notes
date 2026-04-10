@@ -291,3 +291,132 @@ deps.forEach(effectFn => {
 ```
 
 ![20260409142621](https://tuchuang.coder-sunshine.top/images/20260409142621.png)
+
+### for...in 循环的考虑
+
+```ts
+const state = reactive({ count: 0, bar: 'bar' })
+
+effect(() => {
+  console.log('---触发---')
+  for (const key in state) {
+    console.log(key)
+  }
+})
+
+state.bar = 'ba123r'
+```
+
+![20260409150121](https://tuchuang.coder-sunshine.top/images/20260409150121.png)
+
+这个时候并没有生效，因为在 track 时，处理了 迭代属性，但是在 trigger 时，没有处理迭代属性，所以并没有生效
+
+```ts ins={4-5,8-13}
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  // 之前代码
+
+  // 取得与ITERATE_KEY相关的副作用函数
+  const iterateEffects = depsMap.get(ITERATE_KEY)
+
+  // 将与ITERATE_KEY相关的副作用函数也添加到effects中
+  iterateEffects &&
+    iterateEffects.forEach(effectFn => {
+      if (effectFn !== activeEffect) {
+        effects.add(effectFn)
+      }
+    })
+
+  effects.forEach(effect => effect())
+}
+```
+
+![20260410145705](https://tuchuang.coder-sunshine.top/images/20260410145705.png)
+
+还是没效果，说明代码没有执行到这里来。
+
+```ts {11-13}
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
+  const depsMap = targetMap.get(target)
+  if (!depsMap) {
+    // 从未被追踪过，直接返回
+    return
+  }
+
+  // 再根据 key 从 depsMap 中获取对应的 deps，保存的是 effect 的集合
+  const deps = depsMap.get(key)
+  if (!deps) {
+    return
+  }
+
+  // 执行effects中的副作用函数
+  const effects = new Set<ReactiveEffect>()
+
+  deps.forEach(effectFn => {
+    // 如果当前副作用函数不是当前激活的副作用函数，才添加到 effects 中
+    if (effectFn !== activeEffect) {
+      effects.add(effectFn)
+    }
+  })
+
+  // 取得与ITERATE_KEY相关的副作用函数
+  const iterateEffects = depsMap.get(ITERATE_KEY)
+
+  // 将与ITERATE_KEY相关的副作用函数也添加到effects中
+  iterateEffects &&
+    iterateEffects.forEach(effectFn => {
+      if (effectFn !== activeEffect) {
+        effects.add(effectFn)
+      }
+    })
+
+  effects.forEach(effect => effect())
+}
+```
+
+这里 deps 目前是 undefined，都没有走到 iterateEffects 这里来，修改下这里的代码就行了
+
+```ts del={11-13} ins={18}
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
+  const depsMap = targetMap.get(target)
+  if (!depsMap) {
+    // 从未被追踪过，直接返回
+    return
+  }
+
+  // 再根据 key 从 depsMap 中获取对应的 deps，保存的是 effect 的集合
+  const deps = depsMap.get(key)
+  if (!deps) {
+    return
+  }
+
+  // 执行effects中的副作用函数
+  const effects = new Set<ReactiveEffect>()
+
+  deps &&
+    deps.forEach(effectFn => {
+      // 如果当前副作用函数不是当前激活的副作用函数，才添加到 effects 中
+      if (effectFn !== activeEffect) {
+        effects.add(effectFn)
+      }
+    })
+
+  // 取得与ITERATE_KEY相关的副作用函数
+  const iterateEffects = depsMap.get(ITERATE_KEY)
+
+  // 将与ITERATE_KEY相关的副作用函数也添加到effects中
+  iterateEffects &&
+    iterateEffects.forEach(effectFn => {
+      if (effectFn !== activeEffect) {
+        effects.add(effectFn)
+      }
+    })
+
+  effects.forEach(effect => effect())
+}
+```
+
+![20260410150307](https://tuchuang.coder-sunshine.top/images/20260410150307.png)
+
+这样就正常了。其实这里还应该考虑是新增还是修改，后面再处理。

@@ -33,7 +33,6 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
   if (!shouldTrack || activeEffect === undefined) {
     return
   }
-  // console.log(`%c依赖收集: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #f40')
 
   // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
   let depsMap = targetMap.get(target)
@@ -52,7 +51,6 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
 }
 
 export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
-  // console.log(`%c派发更新: target ${JSON.stringify(target)}【${type}】${String(key)}`, 'color: #0f0')
   // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
   const depsMap = targetMap.get(target)
   if (!depsMap) {
@@ -62,21 +60,28 @@ export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
 
   // 再根据 key 从 depsMap 中获取对应的 deps，保存的是 effect 的集合
   const deps = depsMap.get(key)
-  if (!deps) {
-    return
-  }
 
-  // // 最后遍历 deps 中的所有 effect，执行它们
-  // deps.forEach(effect => effect())
   // 执行effects中的副作用函数
   const effects = new Set<ReactiveEffect>()
 
-  deps.forEach(effectFn => {
-    // 如果当前副作用函数不是当前激活的副作用函数，才添加到 effects 中
-    if (effectFn !== activeEffect) {
-      effects.add(effectFn)
-    }
-  })
+  deps &&
+    deps.forEach(effectFn => {
+      // 如果当前副作用函数不是当前激活的副作用函数，才添加到 effects 中
+      if (effectFn !== activeEffect) {
+        effects.add(effectFn)
+      }
+    })
+
+  // 取得与ITERATE_KEY相关的副作用函数
+  const iterateEffects = depsMap.get(ITERATE_KEY)
+
+  // 将与ITERATE_KEY相关的副作用函数也添加到effects中
+  iterateEffects &&
+    iterateEffects.forEach(effectFn => {
+      if (effectFn !== activeEffect) {
+        effects.add(effectFn)
+      }
+    })
 
   effects.forEach(effect => effect())
 }

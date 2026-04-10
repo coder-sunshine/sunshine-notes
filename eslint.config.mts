@@ -94,6 +94,7 @@ export default [
       'vue/prefer-import-from-vue': 'off',
       '@typescript-eslint/no-unsafe-function-type': 'off',
       '@typescript-eslint/no-unnecessary-type-constraint': 'off',
+      '@typescript-eslint/no-unused-expressions': 'off',
     },
   },
 

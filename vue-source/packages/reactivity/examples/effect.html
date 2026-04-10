@@ -9,7 +9,7 @@
     <script type="module">
       import { reactive, effect } from '../dist/reactivity.esm.js'
 
-      const state = reactive({ count: 0 })
+      // const state = reactive({ count: 0, bar: 'bar' })
 
       // effect(() => {
       //   effect(() => {
@@ -23,10 +23,16 @@
       //   state.count++
       // }, 1000)
 
+      const state = reactive({ count: 0, bar: 'bar' })
+
       effect(() => {
-        console.log('effect 执行', state.count)
-        state.count = state.count + 1
+        console.log('---触发---')
+        for (const key in state) {
+          console.log(key)
+        }
       })
+
+      state.bar = 'ba123r'
     </script>
   </body>
 </html>
