@@ -84,6 +84,10 @@ export default defineConfig({
               label: '数据库',
               autogenerate: { directory: 'backend/database' },
             },
+            {
+              label: 'C 语言',
+              autogenerate: { directory: 'backend/c' },
+            },
           ],
         },
       ],

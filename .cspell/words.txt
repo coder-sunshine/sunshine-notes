@@ -32,6 +32,7 @@ reactjs
 recoil
 redux
 sass
+scanf
 scss
 seti
 styl
