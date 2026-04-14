@@ -2,6 +2,7 @@ import { TrackOpTypes, TriggerOpTypes } from './operations'
 
 export interface ReactiveEffect<T = any> {
   (): T
+  deps: Dep[]
 }
 
 type Dep = Set<ReactiveEffect>
@@ -48,6 +49,9 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
 
   // 最后将当前 effect 添加到 deps 中
   deps.add(activeEffect)
+
+  // 将上面的 deps 添加到 activeEffect 的 deps 中，也就是反向收集依赖
+  activeEffect.deps.push(deps)
 }
 
 export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
@@ -89,11 +93,13 @@ export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
 }
 
 export function effect<T = any>(fn: () => T) {
-  const effectFn = () => {
+  const effectFn: ReactiveEffect = () => {
+    // 先清理当前副作用函数的依赖
+    cleanup(effectFn)
     // 当effectFn执行时，将其设置为当前激活的副作用函数，这样在 `track` 中收集进去的是 `effectFn`，trigger 重新执行的就是 `effectFn`，就可以拿到上下文了。
     activeEffect = effectFn
     // 在 fn 函数调用之前，将当前 effect 压入栈顶
-    effectStack.push(fn)
+    effectStack.push(effectFn)
     // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
     fn()
     // 在调用副作用函数之后，将其弹出effectStack栈
@@ -102,5 +108,19 @@ export function effect<T = any>(fn: () => T) {
     activeEffect = effectStack[effectStack.length - 1]
   }
 
+  // 在effectFn函数上挂载了deps数组，目的是在收集依赖时可以临时记录依赖关系
+  // 在effectFn函数上挂载，其实就相当于在activeEffect挂载
+  effectFn.deps = []
+
   effectFn()
+}
+
+function cleanup(effect: ReactiveEffect) {
+  const { deps } = effect
+  if (deps.length) {
+    for (let i = 0; i < deps.length; i++) {
+      deps[i].delete(effect)
+    }
+    deps.length = 0
+  }
 }
