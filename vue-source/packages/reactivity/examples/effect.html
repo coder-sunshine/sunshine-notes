@@ -6,6 +6,11 @@
     <title>effect</title>
   </head>
   <body>
+    <div id="app"></div>
+    <button id="flagBtn">update flag</button>
+    <button id="nameBtn">update name</button>
+    <button id="ageBtn">update age</button>
+
     <script type="module">
       import { reactive, effect } from '../dist/reactivity.esm.js'
 
@@ -23,16 +28,46 @@
       //   state.count++
       // }, 1000)
 
-      const state = reactive({ count: 0, bar: 'bar' })
+      // const state = reactive({ count: 0, bar: 'bar' })
+
+      // effect(() => {
+      //   console.log('---触发---')
+      //   for (const key in state) {
+      //     console.log(key)
+      //   }
+      // })
+
+      // state.bar = 'ba123r'
+
+      const state = reactive({
+        flag: false,
+        name: 'name',
+        age: 18,
+      })
 
       effect(() => {
-        console.log('---触发---')
-        for (const key in state) {
-          console.log(key)
+        console.count('effect')
+        // 需要根据 flag 的值， 来决定 effect 的依赖项是什么，把不需要的依赖给清理掉
+        if (state.flag) {
+          app.innerHTML = state.name
+        } else {
+          app.innerHTML = state.age
         }
       })
 
-      state.bar = 'ba123r'
+      flagBtn.onclick = () => {
+        state.flag = !state.flag
+      }
+
+      nameBtn.onclick = () => {
+        // 如果 flag 为 true，那么 name 就是依赖项，如果 flag 为 false，那么 name 就不是依赖项，需要清理掉
+        state.name = state.name + Math.random()
+      }
+
+      ageBtn.onclick = () => {
+        // 如果 flag 为 true，那么 age 就是依赖项，如果 flag 为 false，那么 age 就不是依赖项，需要清理掉
+        state.age++
+      }
     </script>
   </body>
 </html>

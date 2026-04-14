@@ -51,6 +51,8 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
 }
 
 export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  console.log('targetMap', targetMap)
+
   // 先根据 target 从 weakMap 中获取对应的 map，保存的是 key --- effects 的键值对
   const depsMap = targetMap.get(target)
   if (!depsMap) {
@@ -87,21 +89,18 @@ export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
 }
 
 export function effect<T = any>(fn: () => T) {
-  // 当 effect 执行时，将其设置为当前激活的副作用函数
-  activeEffect = fn
+  const effectFn = () => {
+    // 当effectFn执行时，将其设置为当前激活的副作用函数，这样在 `track` 中收集进去的是 `effectFn`，trigger 重新执行的就是 `effectFn`，就可以拿到上下文了。
+    activeEffect = effectFn
+    // 在 fn 函数调用之前，将当前 effect 压入栈顶
+    effectStack.push(fn)
+    // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
+    fn()
+    // 在调用副作用函数之后，将其弹出effectStack栈
+    effectStack.pop()
+    // activeEffect始终指向当前effectStack栈顶的副作用函数
+    activeEffect = effectStack[effectStack.length - 1]
+  }
 
-  // 在 fn 函数调用之前，将当前 effect 压入栈顶
-  effectStack.push(fn)
-
-  // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
-  fn()
-
-  // 在 fn 函数调用之后，将当前 effect 从栈顶弹出
-  effectStack.pop()
-
-  // 恢复 activeEffect 为栈顶的 effect
-  activeEffect = effectStack[effectStack.length - 1]
-
-  // // 当 effect 执行完成后，将其设置为 undefined
-  // activeEffect = undefined
+  effectFn()
 }

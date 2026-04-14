@@ -420,3 +420,171 @@ export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
 ![20260410150307](https://tuchuang.coder-sunshine.top/images/20260410150307.png)
 
 这样就正常了。其实这里还应该考虑是新增还是修改，后面再处理。
+
+### 分支切换问题
+
+```html
+<div id="app"></div>
+<button id="flagBtn">update flag</button>
+<button id="nameBtn">update name</button>
+<button id="ageBtn">update age</button>
+```
+
+```ts
+const state = reactive({
+  flag: false,
+  name: 'name',
+  age: 18,
+})
+
+effect(() => {
+  console.count('effect')
+  // 需要根据 flag 的值， 来决定 effect 的依赖项是什么，把不需要的依赖给清理掉
+  if (state.flag) {
+    app.innerHTML = state.name
+  } else {
+    app.innerHTML = state.age
+  }
+})
+
+flagBtn.onclick = () => {
+  state.flag = !state.flag
+}
+
+nameBtn.onclick = () => {
+  // 如果 flag 为 true，那么 name 就是依赖项，如果 flag 为 false，那么 name 就不是依赖项，需要清理掉
+  state.name = state.name + Math.random()
+}
+
+ageBtn.onclick = () => {
+  // 如果 flag 为 true，那么 age 就是依赖项，如果 flag 为 false，那么 age 就不是依赖项，需要清理掉
+  state.age++
+}
+```
+
+![20260413174847](https://tuchuang.coder-sunshine.top/images/20260413174847.png)
+
+也就是展示这样的内容，点击不同的按钮分别干不同的事情，在 `trigger` 中打印 `targetMap`。
+
+```ts
+export function trigger(target: object, type: TriggerOpTypes, key: unknown) {
+  console.log('targetMap', targetMap)
+}
+```
+
+- 一开始 `flag` 为 `false`，所以这里 `effect` 执行的时候收集到的依赖是 `flag` 和 `age`
+- 点击修改下年龄，会触发 `trigger` 函数，
+  ![20260413175451](https://tuchuang.coder-sunshine.top/images/20260413175451.png)
+  可以看到 `targetMap` 里面确实是收集的 `flag` 和 `age` 的依赖。
+- 此时再点击一下 `update flag`，将 `flag` 改为 `true`，会触发 `effect` 重新执行。
+  ![20260413175559](https://tuchuang.coder-sunshine.top/images/20260413175559.png)
+  修改后可以看到这里还是只收集到了 `flag` 和 `age` 的依赖，这是明显不对的，因为此时 `flag` 为 `true`，所以应该把 `name` 也收集到依赖项中。
+
+  **为什么这里没有收集到 `name` 的依赖项？**
+
+  > 因为在 trigger 函数中，最后执行的是 effects.forEach(effect => effect())。
+
+  ```ts
+  effects.forEach(effect => effect())
+  ```
+
+  也就是说：**`deps` 里面存的是谁，`trigger` 重新执行的就是谁**
+
+  然后再看之前的 `effect` 的代码
+
+  ```ts {3}
+  export function effect<T = any>(fn: () => T) {
+    // 当 effect 执行时，将其设置为当前激活的副作用函数
+    activeEffect = fn
+
+    // 在 fn 函数调用之前，将当前 effect 压入栈顶
+    effectStack.push(fn)
+
+    // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
+    fn()
+
+    // 在 fn 函数调用之后，将当前 effect 从栈顶弹出
+    effectStack.pop()
+
+    // 恢复 activeEffect 为栈顶的 effect
+    activeEffect = effectStack[effectStack.length - 1]
+  }
+  ```
+
+  **核心内容是**
+  - `activeEffect = fn`
+  - 所以 `track` 中收集进去的是 `fn`
+
+  也就是说
+
+  ```ts
+  deps.add(fn)
+  ```
+
+  **第一次执行时**
+  当然是正常的，因为手动调用了 `effect(fn)`：
+  1. `activeEffect = fn`
+  2. 执行 `fn()`
+  3. 访问 `state.flag`
+  4. `track()` 看到 `activeEffect` 是 `fn`
+  5. 成功收集依赖
+
+  所以第一次是没问题的
+
+  **但点击 `update flag` 之后**
+
+  走的是 `trigger` 函数，而不是 `effect` 函数了。`trigger` 函数里面拿到的是原始函数 `fn`，所以就没有之前的这些步骤。
+  - `activeEffect = fn`
+  - `effectStack.push(fn)`
+  - `effectStack.pop()`
+  - 恢复栈顶
+
+  所以这次重新执行时，`fn` 里面读到 `state.flag`、`state.name` 的时候：
+
+  ```ts
+  track()
+  ```
+
+  此时看到的 `activeEffect` 会是 `undefined`。那么就会到导致 `name` 不会被收集到依赖里面，最后的 `targetWeakMap` 里面只有 `flag` 和 `age` 的依赖。
+
+:::tip[怎么解决这个问题呢?]
+其实解决方案很简单，只需要改变下之前的 `effect` 函数，把直接执行的 fn 函数，包装起来，变成一个 `effectFn` 函数。然后在函数内部做之前的操作，这样让 deps 里面存的是 `effectFn` 函数。
+:::
+
+```ts del={2-15} ins={17-30}
+export function effect<T = any>(fn: () => T) {
+  // 当 effect 执行时，将其设置为当前激活的副作用函数
+  activeEffect = fn
+
+  // 在 fn 函数调用之前，将当前 effect 压入栈顶
+  effectStack.push(fn)
+
+  // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
+  fn()
+
+  // 在 fn 函数调用之后，将当前 effect 从栈顶弹出
+  effectStack.pop()
+
+  // 恢复 activeEffect 为栈顶的 effect
+  activeEffect = effectStack[effectStack.length - 1]
+
+  const effectFn = () => {
+    // 当effectFn执行时，将其设置为当前激活的副作用函数，这样在 `track` 中收集进去的是 `effectFn`，trigger 重新执行的就是 `effectFn`，就可以拿到上下文了。
+    activeEffect = effectFn
+    // 在 fn 函数调用之前，将当前 effect 压入栈顶
+    effectStack.push(fn)
+    // 执行 fn 函数，在 fn 执行的过程中，会收集到对应的依赖
+    fn()
+    // 在调用副作用函数之后，将其弹出effectStack栈
+    effectStack.pop()
+    // activeEffect始终指向当前effectStack栈顶的副作用函数
+    activeEffect = effectStack[effectStack.length - 1]
+  }
+
+  effectFn()
+}
+```
+
+![20260414100714](https://tuchuang.coder-sunshine.top/images/20260414100714.png)
+
+修改 `effect` 后再点击一次 `update flag`，可以看到此时 `targetMap` 里面收集到了 `flag`, `name`, `age` 的依赖。
