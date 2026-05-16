@@ -1,3 +1,4 @@
+ABCDEEDCBA
 Aliyun
 aliyuncs
 antd
@@ -8,9 +9,15 @@ chatgpt
 commitlint
 composables
 embeddings
+exce
 expressjs
+fabs
 fangbinwei
 fastify
+fclose
+fopen
+fputc
+getchar
 gitmoji
 jotai
 kiro
@@ -29,6 +36,8 @@ ossutil
 pinia
 Prefixs
 prisma
+Programe
+putchar
 reactjs
 recoil
 redux
@@ -37,6 +46,8 @@ scanf
 scss
 seti
 stdlib
+strcat
+strcmp
 strcpy
 styl
 stylus
