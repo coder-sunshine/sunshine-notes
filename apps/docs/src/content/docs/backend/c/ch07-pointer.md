@@ -808,8 +808,9 @@ int sum(int *a, int n)
 int sum(int *a, int n)
 {
     int i, s = 0;
-    for (i = 0; i < n; i++)
+    for (i = 0; i < n; i++) {
         s += *(a + i);
+    }
     return s;
 }
 ```
@@ -822,8 +823,9 @@ void print_matrix(int a[][3], int rows)
     int i, j;
     for (i = 0; i < rows; i++)
     {
-        for (j = 0; j < 3; j++)
+        for (j = 0; j < 3; j++) {
             printf("%d ", a[i][j]);
+        }
         printf("\n");
     }
 }
@@ -938,8 +940,9 @@ void to_upper(char *s)
 {
     while (*s != '\0')
     {
-        if (*s >= 'a' && *s <= 'z')
+        if (*s >= 'a' && *s <= 'z') {
             *s = *s - 'a' + 'A';
+        }
         s++;
     }
 }
@@ -1021,8 +1024,9 @@ int *find_max(int a[], int n)
 
     for (i = 1; i < n; i++)
     {
-        if (a[i] > a[k])
+        if (a[i] > a[k]) {
             k = i;
+        }
     }
     return &a[k];
 }
@@ -1040,8 +1044,9 @@ int *find_max(int a[], int n)
 
     for (i = 1; i < n; i++)
     {
-        if (a[i] > a[k])
+        if (a[i] > a[k]) {
             k = i;
+        }
     }
     return &a[k];
 }
@@ -1098,8 +1103,9 @@ int main(void)
     char *names[3] = {"Tom", "Alice", "Bob"};
     int i;
 
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 3; i++) {
         printf("%s\n", names[i]);
+    }
 
     return 0;
 }
@@ -1181,8 +1187,9 @@ int main(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
     int i;
-    for (i = 0; i < argc; i++)
+    for (i = 0; i < argc; i++) {
         printf("%s\n", argv[i]);
+    }
     return 0;
 }
 ```
@@ -1220,8 +1227,9 @@ int main(void)
 
     reverse(a, 6);
 
-    for (i = 0; i < 6; i++)
+    for (i = 0; i < 6; i++) {
         printf("%d ", a[i]);
+    }
 
     return 0;
 }
@@ -1239,8 +1247,9 @@ int count_vowel(char *s)
     while (*s != '\0')
     {
         if (*s == 'a' || *s == 'e' || *s == 'i' || *s == 'o' || *s == 'u' ||
-            *s == 'A' || *s == 'E' || *s == 'I' || *s == 'O' || *s == 'U')
+            *s == 'A' || *s == 'E' || *s == 'I' || *s == 'O' || *s == 'U') {
             cnt++;
+        }
         s++;
     }
     return cnt;
@@ -1343,8 +1352,9 @@ int *find_max(int a[], int n)
     int i, k = 0;
     for (i = 1; i < n; i++)
     {
-        if (a[i] > a[k])
+        if (a[i] > a[k]) {
             k = i;
+        }
     }
     return &a[k];
 }
@@ -1399,6 +1409,21 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+20 20
+```
+
+解析：
+
+`p` 保存的是变量 `a` 的地址，所以 `*p` 就是通过地址访问 `a` 本身。执行 `*p = 20;` 后，变量 `a` 的值也变成了 `20`。
+
+易错点：
+
+- `p` 是地址。
+- `*p` 是这个地址里面存放的值。
+
 2. 写出下面程序的输出结果。
 
 ```c
@@ -1413,6 +1438,27 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+1 3 4
+```
+
+解析：
+
+`int *p = a;` 让 `p` 指向 `a[0]`。
+
+```text
+*p       -> a[0] -> 1
+*(p + 2) -> a[2] -> 3
+p[3]     -> a[3] -> 4
+```
+
+易错点：
+
+- `p[i]` 等价于 `*(p + i)`。
+- 数组下标从 `0` 开始。
+
 3. 写出下面程序的输出结果。
 
 ```c
@@ -1426,6 +1472,27 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+```text
+a b c
+```
+
+解析：
+
+`p` 指向字符串数组 `str` 的第一个字符：
+
+```text
+*p       -> str[0] -> 'a'
+*(p + 1) -> str[1] -> 'b'
+*(p + 2) -> str[2] -> 'c'
+```
+
+易错点：
+
+- 字符串本质上是以 `'\0'` 结尾的字符数组。
+- 字符指针可以像数组一样从前往后访问字符。
 
 4. 写出下面程序的输出结果。
 
@@ -1442,6 +1509,35 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+```text
+8 8 8
+```
+
+解析：
+
+关系如下：
+
+```text
+p  指向 a
+pp 指向 p
+```
+
+所以：
+
+```text
+*p   是 a
+**pp 也是 a
+```
+
+执行 `**pp = 8;` 就是把 `a` 改成 `8`。
+
+易错点：
+
+- 一级指针保存普通变量地址。
+- 二级指针保存一级指针变量的地址。
 
 5. 写出下面程序的输出结果。
 
@@ -1461,6 +1557,33 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+5
+```
+
+解析：
+
+`pf` 是函数指针，指向函数 `add`。
+
+```c
+pf(2, 3)
+```
+
+等价于：
+
+```c
+add(2, 3)
+```
+
+所以输出 `2 + 3 = 5`。
+
+易错点：
+
+- `int (*pf)(int, int)` 表示 `pf` 是一个函数指针。
+- 函数指针调用时可以写 `pf(...)`。
+
 6. 写出下面程序的输出结果。
 
 ```c
@@ -1476,30 +1599,626 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+20
+```
+
+解析：
+
+开始时：
+
+```text
+p -> a[0] -> 10
+```
+
+执行 `p++;` 后：
+
+```text
+p -> a[1] -> 20
+```
+
+所以 `*p` 输出 `20`。
+
+易错点：
+
+- 指针 `p++` 不是地址只加 1 个字节，而是移动到下一个同类型元素。
+
 ### 手写程序题
 
 7. 定义一个整型变量和一个指向它的指针变量，分别输出该变量的值和地址。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int a = 10;
+    int *p = &a;
+
+    printf("value=%d\n", a);
+    printf("address=%p\n", (void *)p);
+
+    return 0;
+}
+```
+
+易错点：
+
+- `&a` 表示变量 `a` 的地址。
+- 用 `%p` 输出地址时，标准写法是把指针转换成 `(void *)`。
+
 8. 写函数 `swap(int *a, int *b)`，交换两个整数的值。
+
+答案：
+
+```c
+void swap(int *a, int *b)
+{
+    int t;
+
+    t = *a;
+    *a = *b;
+    *b = t;
+}
+```
+
+调用示例：
+
+```c
+int x = 3, y = 5;
+swap(&x, &y);
+```
+
+易错点：
+
+- 调用时要传地址：`&x`、`&y`。
+- 函数里交换的是 `*a` 和 `*b`，不是交换指针变量 `a` 和 `b`。
+
 9. 写函数 `order(int *a, int *b)`，让两个整数按从小到大排列。
+
+答案：
+
+```c
+void order(int *a, int *b)
+{
+    int t;
+
+    if (*a > *b)
+    {
+        t = *a;
+        *a = *b;
+        *b = t;
+    }
+}
+```
+
+易错点：
+
+- 比较时要写 `*a > *b`，比较的是两个整数值。
+
 10. 写函数 `sum(int *a, int n)`，用指针求数组元素之和。
+
+答案：
+
+```c
+int sum(int *a, int n)
+{
+    int i;
+    int s = 0;
+
+    for (i = 0; i < n; i++) {
+        s += *(a + i);
+    }
+
+    return s;
+}
+```
+
+易错点：
+
+- `*(a + i)` 等价于 `a[i]`。
+- 数组传参时，函数通常还需要知道数组长度 `n`。
+
 11. 写函数统计数组中正数、负数和 0 的个数，结果通过指针参数带回。
+
+答案：
+
+```c
+void count_numbers(int a[], int n, int *positive, int *negative, int *zero)
+{
+    int i;
+
+    *positive = 0;
+    *negative = 0;
+    *zero = 0;
+
+    for (i = 0; i < n; i++)
+    {
+        if (a[i] > 0) {
+            (*positive)++;
+        }
+        else if (a[i] < 0) {
+            (*negative)++;
+        }
+        else {
+            (*zero)++;
+        }
+    }
+}
+```
+
+易错点：
+
+- `(*positive)++` 的括号不能省。`*positive++` 会先移动指针，含义完全不同。
+
 12. 写函数返回数组中最大元素的地址，并在主函数中输出该元素值。
+
+答案：
+
+```c
+int *max_addr(int a[], int n)
+{
+    int i;
+    int *max = &a[0];
+
+    for (i = 1; i < n; i++) {
+        if (a[i] > *max) {
+            max = &a[i];
+        }
+    }
+
+    return max;
+}
+```
+
+调用示例：
+
+```c
+int a[5] = {3, 9, 2, 7, 4};
+int *p = max_addr(a, 5);
+printf("%d\n", *p);
+```
+
+易错点：
+
+- 可以返回数组元素地址，因为数组在主函数中仍然存在。
+- 不要返回函数内部局部变量的地址。
+
 13. 用指针实现一维数组逆序。
+
+答案：
+
+```c
+void reverse(int *a, int n)
+{
+    int *left = a;
+    int *right = a + n - 1;
+    int t;
+
+    while (left < right)
+    {
+        t = *left;
+        *left = *right;
+        *right = t;
+
+        left++;
+        right--;
+    }
+}
+```
+
+易错点：
+
+- 左指针从开头往后走，右指针从末尾往前走。
+- 每次交换后两个指针都要移动。
+
 14. 用指针统计数组中奇数元素的个数。
+
+答案：
+
+```c
+int count_odd(int *a, int n)
+{
+    int i;
+    int count = 0;
+
+    for (i = 0; i < n; i++) {
+        if (*(a + i) % 2 != 0) {
+            count++;
+        }
+    }
+
+    return count;
+}
+```
+
+易错点：
+
+- 奇数判断：`值 % 2 != 0`。
+
 15. 写函数 `my_strlen(char *s)`，自己实现求字符串长度。
+
+答案：
+
+```c
+int my_strlen(char *s)
+{
+    int len = 0;
+
+    while (*s != '\0')
+    {
+        len++;
+        s++;
+    }
+
+    return len;
+}
+```
+
+易错点：
+
+- 字符串长度不包括结尾的 `'\0'`。
+- `s++` 表示指针移动到下一个字符。
+
 16. 写函数 `copy_str(char *to, char *from)`，用指针复制字符串。
+
+答案：
+
+```c
+void copy_str(char *to, char *from)
+{
+    while (*from != '\0')
+    {
+        *to = *from;
+        to++;
+        from++;
+    }
+
+    *to = '\0';
+}
+```
+
+易错点：
+
+- 复制完普通字符后，最后一定要补上 `'\0'`。
+- 目标数组空间要足够大。
+
 17. 写函数 `cmp_str(char *s1, char *s2)`，比较两个字符串是否相同。
+
+答案：
+
+```c
+int cmp_str(char *s1, char *s2)
+{
+    while (*s1 != '\0' || *s2 != '\0')
+    {
+        if (*s1 != *s2) {
+            return 0;
+        }
+
+        s1++;
+        s2++;
+    }
+
+    return 1;
+}
+```
+
+易错点：
+
+- 不能用 `s1 == s2` 比较字符串内容，那是在比较地址。
+- 要逐个字符比较。
+
 18. 写函数把字符串中的小写字母全部改成大写字母。
+
+答案：
+
+```c
+void str_to_upper(char *s)
+{
+    while (*s != '\0')
+    {
+        if (*s >= 'a' && *s <= 'z') {
+            *s = *s - 'a' + 'A';
+        }
+        s++;
+    }
+}
+```
+
+易错点：
+
+- 只能修改字符数组里的内容，不能修改字符串常量。
+
 19. 写函数统计一个字符串中元音字母的个数。
+
+答案：
+
+```c
+int count_vowel(char *s)
+{
+    int count = 0;
+
+    while (*s != '\0')
+    {
+        if (*s == 'a' || *s == 'e' || *s == 'i' || *s == 'o' || *s == 'u' ||
+            *s == 'A' || *s == 'E' || *s == 'I' || *s == 'O' || *s == 'U') {
+            count++;
+        }
+        s++;
+    }
+
+    return count;
+}
+```
+
+易错点：
+
+- 如果题目没说只统计小写，最好大小写都考虑。
+
 20. 输入一个字符串，利用字符指针逆序输出。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    char s[100];
+    char *p;
+
+    scanf("%s", s);
+
+    p = s;
+    while (*p != '\0') {
+        p++;
+    }
+
+    p--;
+    while (p >= s)
+    {
+        printf("%c", *p);
+        p--;
+    }
+
+    printf("\n");
+    return 0;
+}
+```
+
+易错点：
+
+- 先让指针走到 `'\0'`，再退回最后一个有效字符。
+
 21. 写函数输出二维数组所有元素，并把二维数组作为函数参数传入。
+
+答案：
+
+```c
+void print_matrix(int a[][3], int row)
+{
+    int i, j;
+
+    for (i = 0; i < row; i++)
+    {
+        for (j = 0; j < 3; j++) {
+            printf("%d ", a[i][j]);
+        }
+        printf("\n");
+    }
+}
+```
+
+易错点：
+
+- 二维数组作为函数参数时，第二维必须写出来，比如 `a[][3]`。
+
 22. 写函数求二维数组每一行的和。
+
+答案：
+
+```c
+void row_sum(int a[][3], int row, int result[])
+{
+    int i, j;
+
+    for (i = 0; i < row; i++)
+    {
+        result[i] = 0;
+        for (j = 0; j < 3; j++) {
+            result[i] += a[i][j];
+        }
+    }
+}
+```
+
+易错点：
+
+- 每一行开始求和前，要先把 `result[i]` 清零。
+
 23. 写函数 `select(int op)`，返回不同的函数指针，用来实现加法或乘法。
+
+答案：
+
+```c
+int add(int a, int b)
+{
+    return a + b;
+}
+
+int mul(int a, int b)
+{
+    return a * b;
+}
+
+int (*select(int op))(int, int)
+{
+    if (op == 1) {
+        return add;
+    }
+    return mul;
+}
+```
+
+调用示例：
+
+```c
+int (*pf)(int, int);
+pf = select(1);
+printf("%d\n", pf(2, 3));
+```
+
+易错点：
+
+- 函数指针声明比较绕，先看 `select(int op)`，它是函数；外层表示它返回一个函数指针。
+
 24. 定义一个指针数组，保存 5 个字符串，并逐行输出。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    char *names[5] = {"C", "Java", "Python", "Go", "Rust"};
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        printf("%s\n", names[i]);
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- `char *names[5]` 是指针数组，数组里每个元素都是 `char *`。
+
 25. 用二级指针交换两个字符指针变量的值。
+
+答案：
+
+```c
+void swap_str(char **p1, char **p2)
+{
+    char *t;
+
+    t = *p1;
+    *p1 = *p2;
+    *p2 = t;
+}
+```
+
+调用示例：
+
+```c
+char *a = "hello";
+char *b = "world";
+swap_str(&a, &b);
+```
+
+易错点：
+
+- 要交换指针变量本身，就要传它们的地址，所以形参是 `char **`。
+
 26. 编写 `main(int argc, char *argv[])` 程序，输出所有命令行参数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(int argc, char *argv[])
+{
+    int i;
+
+    for (i = 0; i < argc; i++) {
+        printf("argv[%d]=%s\n", i, argv[i]);
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- `argc` 是参数个数。
+- `argv[0]` 通常是程序名。
+
 27. 输入若干整数，利用指针找出最大值和最小值，并输出它们的地址。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int a[100];
+    int n, i;
+    int *pmax, *pmin;
+
+    scanf("%d", &n);
+    for (i = 0; i < n; i++) {
+        scanf("%d", &a[i]);
+    }
+
+    pmax = pmin = &a[0];
+
+    for (i = 1; i < n; i++)
+    {
+        if (a[i] > *pmax) {
+            pmax = &a[i];
+        }
+        if (a[i] < *pmin) {
+            pmin = &a[i];
+        }
+    }
+
+    printf("max=%d address=%p\n", *pmax, (void *)pmax);
+    printf("min=%d address=%p\n", *pmin, (void *)pmin);
+
+    return 0;
+}
+```
+
+易错点：
+
+- `pmax` 保存最大元素的地址，`*pmax` 才是最大元素的值。
+
 28. 写函数利用指针实现选择排序或冒泡排序。
+
+答案：下面是冒泡排序写法。
+
+```c
+void bubble_sort(int *a, int n)
+{
+    int i, j, t;
+
+    for (i = 0; i < n - 1; i++) {
+        for (j = 0; j < n - 1 - i; j++) {
+            if (*(a + j) > *(a + j + 1)) {
+        }
+            }
+    }
+            {
+                t = *(a + j);
+                *(a + j) = *(a + j + 1);
+                *(a + j + 1) = t;
+            }
+}
+```
+
+易错点：
+
+- 内层循环条件是 `j < n - 1 - i`，避免访问 `a[j + 1]` 越界。
 
 ### 改错题
 
@@ -1517,6 +2236,33 @@ int main(void)
 }
 ```
 
+答案：
+
+错误原因：
+
+`p` 是野指针，没有指向任何合法变量，就直接执行 `*p = 10;`，这是危险错误。
+
+正确写法：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int a;
+    int *p = &a;
+
+    *p = 10;
+    printf("%d\n", *p);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 指针使用前必须先指向合法地址。
+
 30. 找出并改正下面程序中的错误。
 
 ```c
@@ -1526,6 +2272,38 @@ int *f(void)
     return &a;
 }
 ```
+
+答案：
+
+错误原因：
+
+函数返回了局部变量 `a` 的地址。函数结束后，局部变量 `a` 的生命周期结束，这个地址就不能再安全使用。
+
+一种正确写法：把变量定义成 `static`。
+
+```c
+int *f(void)
+{
+    static int a = 100;
+    return &a;
+}
+```
+
+更常见的建议：
+
+如果只是想返回一个整数，直接返回值更好：
+
+```c
+int f(void)
+{
+    int a = 100;
+    return a;
+}
+```
+
+易错点：
+
+- 不要返回普通局部变量的地址。
 
 31. 找出并改正下面程序中的错误。
 
@@ -1540,6 +2318,33 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+错误原因：
+
+`char *p = "hello";` 中，`p` 指向字符串常量。字符串常量通常不能被修改，所以 `p[0] = 'H';` 是错误的。
+
+正确写法：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    char p[] = "hello";
+
+    p[0] = 'H';
+    printf("%s\n", p);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 字符数组可以改内容。
+- 指向字符串常量的字符指针不能用来修改字符串常量。
 
 32. 找出并改正下面程序中的错误。
 
@@ -1561,6 +2366,46 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+错误原因：
+
+`swap` 的形参是 `int *`，调用时应该传变量地址。但原程序写成：
+
+```c
+swap(x, y);
+```
+
+这是把整数值传过去了，不是地址。
+
+正确写法：
+
+```c
+#include <stdio.h>
+
+void swap(int *a, int *b)
+{
+    int t = *a;
+    *a = *b;
+    *b = t;
+}
+
+int main(void)
+{
+    int x = 3, y = 5;
+
+    swap(&x, &y);
+    printf("%d %d\n", x, y);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 形参是指针时，实参通常要传地址。
+- `swap(&x, &y)` 才能真正修改 `x` 和 `y`。
 
 ## 14. 自测清单
 

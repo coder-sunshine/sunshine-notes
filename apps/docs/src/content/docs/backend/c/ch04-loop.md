@@ -130,8 +130,9 @@ int main(void)
     int i = 1;
 
 start:
-    if (i > 5)
+    if (i > 5) {
         goto end;
+    }
 
     printf("%d ", i);
     i++;
@@ -165,8 +166,9 @@ int main(void)
     {
         for (j = 1; j <= 3; j++)
         {
-            if (i == 2 && j == 2)
+            if (i == 2 && j == 2) {
                 goto finish;
+            }
             printf("(%d, %d)\n", i, j);
         }
     }
@@ -263,8 +265,9 @@ for (i = 1; i <= n; i++)
 count = 0;
 for (i = 1; i <= n; i++)
 {
-    if (条件成立)
+    if (条件成立) {
         count++;
+    }
 }
 ```
 
@@ -274,8 +277,9 @@ for (i = 1; i <= n; i++)
 max = 第一个值;
 for (后续每个值)
 {
-    if (当前值 > max)
+    if (当前值 > max) {
         max = 当前值;
+    }
 }
 ```
 
@@ -301,13 +305,28 @@ int main(void)
     int i;
     for (i = 1; i <= 5; i++)
     {
-        if (i == 3)
+        if (i == 3) {
             continue;
+        }
         printf("%d ", i);
     }
     return 0;
 }
 ```
+
+答案：
+
+```text
+1 2 4 5
+```
+
+解析：
+
+循环中当 `i == 3` 时执行 `continue`，会跳过本次循环后面的 `printf`，直接进入下一轮循环。所以 `3` 不会输出。
+
+易错点：
+
+- `continue` 是跳过本轮循环剩下的语句，不是结束整个循环。
 
 2. 写出下面程序的输出结果。
 
@@ -318,24 +337,282 @@ int main(void)
     int i;
     for (i = 1; i <= 5; i++)
     {
-        if (i == 3)
+        if (i == 3) {
             break;
+        }
         printf("%d ", i);
     }
     return 0;
 }
 ```
 
+答案：
+
+```text
+1 2
+```
+
+解析：
+
+循环中当 `i == 3` 时执行 `break`，整个循环直接结束，所以只输出 `1 2`。
+
+易错点：
+
+- `break` 是结束整个循环。
+- `continue` 是跳过本轮，继续下一轮。
+
 ### 手写程序题
 
 3. 用 `while` 求 `1 + 2 + ... + 100`。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int i = 1;
+    int sum = 0;
+
+    while (i <= 100)
+    {
+        sum += i;
+        i++;
+    }
+
+    printf("%d\n", sum);
+    return 0;
+}
+```
+
+易错点：
+
+- `sum` 初值要是 `0`。
+- 循环里要写 `i++`，否则会死循环。
+
 4. 用 `for` 输出 `1` 到 `100` 中所有奇数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int i;
+
+    for (i = 1; i <= 100; i++) {
+        if (i % 2 != 0) {
+            printf("%d ", i);
+        }
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 奇数判断：`i % 2 != 0`。
+
 5. 输入一个正整数 `n`，求 `n!`。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n, i;
+    long long fact = 1;
+
+    scanf("%d", &n);
+
+    for (i = 1; i <= n; i++) {
+        fact *= i;
+    }
+
+    printf("%lld\n", fact);
+    return 0;
+}
+```
+
+易错点：
+
+- 阶乘是乘法累积，所以初值要写 `1`，不能写 `0`。
+- 阶乘增长很快，普通 `int` 容易溢出。
+
 6. 输入一个正整数，求它有几位数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n;
+    int count = 0;
+
+    scanf("%d", &n);
+
+    if (n == 0) {
+        count = 1;
+    }
+    else
+    {
+        while (n != 0)
+        {
+            count++;
+            n /= 10;
+        }
+    }
+
+    printf("%d\n", count);
+    return 0;
+}
+```
+
+易错点：
+
+- 每执行一次 `n /= 10`，就去掉一位。
+- 如果允许输入 `0`，要单独处理，因为 `0` 是 1 位数。
+
 7. 输入一个整数，逆序输出它的每一位。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n;
+
+    scanf("%d", &n);
+
+    if (n == 0) {
+        printf("0");
+    }
+
+    while (n != 0)
+    {
+        printf("%d", n % 10);
+        n /= 10;
+    }
+
+    printf("\n");
+    return 0;
+}
+```
+
+易错点：
+
+- 取个位用 `n % 10`。
+- 去掉个位用 `n / 10`。
+
 8. 判断一个正整数是否为素数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n, i;
+    int is_prime = 1;
+
+    scanf("%d", &n);
+
+    if (n <= 1) {
+        is_prime = 0;
+    }
+    else
+    {
+        for (i = 2; i < n; i++) {
+            if (n % i == 0) {
+                is_prime = 0;
+            }
+        }
+    }
+
+    if (is_prime) {
+        printf("prime\n");
+    }
+    else {
+        printf("not prime\n");
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- `1` 不是素数。
+- 判断素数从 `2` 开始试除，不要从 `1` 开始。
+
 9. 输出 `100` 到 `999` 之间所有水仙花数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n, a, b, c;
+
+    for (n = 100; n <= 999; n++)
+    {
+        a = n / 100;
+        b = n / 10 % 10;
+        c = n % 10;
+
+        if (a * a * a + b * b * b + c * c * c == n) {
+            printf("%d ", n);
+        }
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 三位水仙花数：每一位数字的立方和等于原数。
+
 10. 输出九九乘法表。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int i, j;
+
+    for (i = 1; i <= 9; i++)
+    {
+        for (j = 1; j <= i; j++) {
+            printf("%d*%d=%d\t", j, i, i * j);
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 外层控制行，内层控制列。
+- 每一行结束后要输出换行。
+
 11. 输出下列图形：
 
 ```text
@@ -346,16 +623,263 @@ int main(void)
 *****
 ```
 
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int i, j;
+
+    for (i = 1; i <= 5; i++)
+    {
+        for (j = 1; j <= i; j++) {
+            printf("*");
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 第 `i` 行输出 `i` 个星号。
+- 内层循环结束后再换行。
+
 12. 输入 `n`，求 `1 + 1/2 + 1/3 + ... + 1/n`。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n, i;
+    double sum = 0;
+
+    scanf("%d", &n);
+
+    for (i = 1; i <= n; i++) {
+        sum += 1.0 / i;
+    }
+
+    printf("%f\n", sum);
+    return 0;
+}
+```
+
+易错点：
+
+- 要写 `1.0 / i`，不要写 `1 / i`。`1 / i` 是整数除法，很多项会变成 `0`。
+
 13. 求两个整数的最大公约数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int a, b, t;
+
+    scanf("%d%d", &a, &b);
+
+    while (b != 0)
+    {
+        t = a % b;
+        a = b;
+        b = t;
+    }
+
+    printf("%d\n", a);
+    return 0;
+}
+```
+
+易错点：
+
+- 这是辗转相除法。
+- 循环条件是 `b != 0`，最后 `a` 是最大公约数。
+
 14. 输入若干个成绩，直到输入负数为止，统计及格人数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int score;
+    int count = 0;
+
+    scanf("%d", &score);
+    while (score >= 0)
+    {
+        if (score >= 60) {
+            count++;
+        }
+
+        scanf("%d", &score);
+    }
+
+    printf("%d\n", count);
+    return 0;
+}
+```
+
+易错点：
+
+- 负数只是结束标志，不应该被统计。
+- 循环里最后要再次输入，否则会死循环。
+
 15. 输出 1 到 100 中所有能被 3 整除但不能被 5 整除的数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int i;
+
+    for (i = 1; i <= 100; i++) {
+        if (i % 3 == 0 && i % 5 != 0) {
+            printf("%d ", i);
+        }
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- “能被 3 整除”是 `i % 3 == 0`。
+- “不能被 5 整除”是 `i % 5 != 0`。
+- 两个条件同时满足，用 `&&`。
 
 ### 提升题
 
 16. 输出一个等腰三角形。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n, i, j;
+
+    scanf("%d", &n);
+
+    for (i = 1; i <= n; i++)
+    {
+        for (j = 1; j <= n - i; j++) {
+            printf(" ");
+        }
+
+        for (j = 1; j <= 2 * i - 1; j++) {
+            printf("*");
+        }
+
+        printf("\n");
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 第 `i` 行前面有 `n - i` 个空格。
+- 第 `i` 行有 `2 * i - 1` 个星号。
+
 17. 求斐波那契数列前 `n` 项。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n, i;
+    long long a = 1, b = 1, c;
+
+    scanf("%d", &n);
+
+    for (i = 1; i <= n; i++)
+    {
+        if (i == 1 || i == 2) {
+            printf("1 ");
+        }
+        else
+        {
+            c = a + b;
+            printf("%lld ", c);
+            a = b;
+            b = c;
+        }
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 前两项通常是 `1, 1`。
+- 每轮算出新项后，要更新前两项。
+
 18. 统计一个整数中数字 `0` 出现的次数。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n;
+    int count = 0;
+
+    scanf("%d", &n);
+
+    if (n == 0) {
+        count = 1;
+    }
+    else
+    {
+        if (n < 0) {
+            n = -n;
+        }
+
+        while (n != 0)
+        {
+            if (n % 10 == 0) {
+                count++;
+            }
+            n /= 10;
+        }
+    }
+
+    printf("%d\n", count);
+    return 0;
+}
+```
+
+易错点：
+
+- 输入 `0` 时，数字 `0` 出现 1 次。
+- 如果允许负数，可以先把它转成正数处理。
 
 ## 11. 自测清单
 

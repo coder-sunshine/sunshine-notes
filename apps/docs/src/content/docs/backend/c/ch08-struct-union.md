@@ -240,8 +240,9 @@ int main(void)
     };
     int i;
 
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 3; i++) {
         printf("%d %s %.1f\n", stu[i].num, stu[i].name, stu[i].score);
+    }
 
     return 0;
 }
@@ -271,8 +272,9 @@ int main(void)
 
     for (i = 1; i < 4; i++)
     {
-        if (stu[i].score > stu[k].score)
+        if (stu[i].score > stu[k].score) {
             k = i;
+        }
     }
 
     printf("%d %s %.1f\n", stu[k].num, stu[k].name, stu[k].score);
@@ -571,13 +573,16 @@ struct Node *delete_value(struct Node *head, int target)
         cur = cur->next;
     }
 
-    if (cur == NULL)
+    if (cur == NULL) {
         return head;
+    }
 
-    if (pre == NULL)
+    if (pre == NULL) {
         head = cur->next;
-    else
+    }
+    else {
         pre->next = cur->next;
+    }
 
     free(cur);
     return head;
@@ -826,8 +831,9 @@ struct Student
 
 ```c
 int i;
-for (i = 0; i < n; i++)
+for (i = 0; i < n; i++) {
     printf("%d %s %.1f\n", stu[i].num, stu[i].name, stu[i].score);
+}
 ```
 
 ### 9.3 结构体指针访问成员
@@ -909,6 +915,20 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+1001 95.5
+```
+
+解析：
+
+`stu.num` 是 `1001`，`stu.score` 是 `95.5f`。格式 `%.1f` 表示保留 1 位小数。
+
+易错点：
+
+- 普通结构体变量访问成员用 `.`。
+
 2. 写出下面程序的输出结果。
 
 ```c
@@ -931,6 +951,26 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+2026-4-20
+```
+
+解析：
+
+结构体变量可以整体赋值：
+
+```c
+d2 = d1;
+```
+
+赋值后，`d2` 的每个成员都和 `d1` 对应成员相同。
+
+易错点：
+
+- 同类型结构体变量之间可以整体赋值。
+
 3. 写出下面程序的输出结果。
 
 ```c
@@ -952,6 +992,32 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+95.0
+```
+
+解析：
+
+`p` 指向 `stu`，所以：
+
+```c
+p->score = 95.0f;
+```
+
+等价于：
+
+```c
+(*p).score = 95.0f;
+```
+
+它会直接修改 `stu.score`。
+
+易错点：
+
+- 结构体指针访问成员用 `->`。
+
 4. 写出下面程序的输出结果。
 
 ```c
@@ -972,6 +1038,28 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+1
+```
+
+解析：
+
+枚举常量默认从 `0` 开始依次递增：
+
+```text
+MON = 0
+TUE = 1
+WED = 2
+```
+
+所以 `TUE` 的值是 `1`。
+
+易错点：
+
+- 枚举常量默认是整数，不是字符串。
+
 5. 写出下面程序的输出结果。
 
 ```c
@@ -987,6 +1075,34 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+```text
+30
+```
+
+解析：
+
+`typedef int Integer;` 表示给 `int` 起了一个别名 `Integer`。所以：
+
+```c
+Integer a = 10;
+Integer b = 20;
+```
+
+等价于：
+
+```c
+int a = 10;
+int b = 20;
+```
+
+输出 `10 + 20 = 30`。
+
+易错点：
+
+- `typedef` 只是起别名，不是创造一种完全不同的运算规则。
 
 6. 写出下面程序的输出结果。
 
@@ -1008,33 +1124,586 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+A
+```
+
+解析：
+
+给共用体成员 `x.c` 赋值为 `'A'`，紧接着输出 `x.c`，所以输出 `A`。
+
+易错点：
+
+- 共用体所有成员共用同一块内存，同一时间通常只安全使用最后赋值的那个成员。
+
 ### 手写程序题
 
 7. 定义一个结构体 `Student`，包含学号、姓名、成绩三个成员。
+
+答案：
+
+```c
+struct Student
+{
+    int num;
+    char name[20];
+    double score;
+};
+```
+
+易错点：
+
+- 结构体定义最后的 `}` 后面要写分号。
+
 8. 定义一个结构体变量，给它赋值并输出。
+
+答案：
+
+```c
+#include <stdio.h>
+
+struct Student
+{
+    int num;
+    char name[20];
+    double score;
+};
+
+int main(void)
+{
+    struct Student stu = {1001, "Tom", 90.5};
+
+    printf("%d %s %.1f\n", stu.num, stu.name, stu.score);
+    return 0;
+}
+```
+
+易错点：
+
+- 普通结构体变量访问成员用 `.`。
+
 9. 定义一个结构体 `Date`，保存年月日，并输出一个日期。
+
+答案：
+
+```c
+#include <stdio.h>
+
+struct Date
+{
+    int year;
+    int month;
+    int day;
+};
+
+int main(void)
+{
+    struct Date d = {2026, 5, 22};
+
+    printf("%d-%d-%d\n", d.year, d.month, d.day);
+    return 0;
+}
+```
+
+易错点：
+
+- 初始化顺序要和成员定义顺序一致。
+
 10. 定义两个同类型结构体变量，练习整体赋值。
+
+答案：
+
+```c
+struct Date d1 = {2026, 5, 22};
+struct Date d2;
+
+d2 = d1;
+```
+
+易错点：
+
+- 只有同类型结构体变量之间才能这样整体赋值。
+
 11. 定义一个包含 5 个学生信息的结构体数组，并输出全部内容。
+
+答案：
+
+```c
+#include <stdio.h>
+
+struct Student
+{
+    int num;
+    char name[20];
+    double score;
+};
+
+int main(void)
+{
+    struct Student stu[5] = {
+        {1001, "Tom", 90},
+        {1002, "Jack", 85},
+        {1003, "Lucy", 92},
+        {1004, "Lily", 88},
+        {1005, "Bob", 76}};
+    int i;
+
+    for (i = 0; i < 5; i++) {
+        printf("%d %s %.1f\n", stu[i].num, stu[i].name, stu[i].score);
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 结构体数组元素访问成员：`stu[i].成员名`。
+
 12. 在结构体数组中找出成绩最高的学生。
+
+答案：
+
+```c
+int max_index = 0;
+int i;
+
+for (i = 1; i < 5; i++) {
+    if (stu[i].score > stu[max_index].score) {
+        max_index = i;
+    }
+}
+
+printf("%d %s %.1f\n", stu[max_index].num, stu[max_index].name, stu[max_index].score);
+```
+
+易错点：
+
+- 可以保存“最高分学生的下标”，不要只保存最高分，否则后面不好输出整个学生信息。
+
 13. 在结构体数组中计算所有学生的平均成绩。
+
+答案：
+
+```c
+double sum = 0;
+double avg;
+int i;
+
+for (i = 0; i < 5; i++) {
+    sum += stu[i].score;
+}
+
+avg = sum / 5;
+printf("%.2f\n", avg);
+```
+
+易错点：
+
+- 平均分建议用 `double`。
+
 14. 写函数输出一个学生的信息，参数为结构体变量。
+
+答案：
+
+```c
+void print_student(struct Student stu)
+{
+    printf("%d %s %.1f\n", stu.num, stu.name, stu.score);
+}
+```
+
+易错点：
+
+- 传结构体变量会复制一份数据，函数里改它不会影响外面的原变量。
+
 15. 写函数修改一个学生的成绩，参数为结构体指针。
+
+答案：
+
+```c
+void change_score(struct Student *p, double score)
+{
+    p->score = score;
+}
+```
+
+易错点：
+
+- 参数是结构体指针时，访问成员用 `->`。
+- 传地址后，函数里可以修改外面的结构体变量。
+
 16. 写函数交换两个结构体变量中的成绩。
+
+答案：
+
+```c
+void swap_score(struct Student *a, struct Student *b)
+{
+    double t;
+
+    t = a->score;
+    a->score = b->score;
+    b->score = t;
+}
+```
+
+易错点：
+
+- 如果要修改两个结构体变量本身的成员，建议传结构体指针。
+
 17. 定义结构体指针，并分别用 `(*p).成员` 和 `p->成员` 输出内容。
+
+答案：
+
+```c
+struct Student stu = {1001, "Tom", 90.5};
+struct Student *p = &stu;
+
+printf("%d %s %.1f\n", (*p).num, (*p).name, (*p).score);
+printf("%d %s %.1f\n", p->num, p->name, p->score);
+```
+
+易错点：
+
+- `(*p).num` 的括号不能省。
+- `p->num` 是更常用的写法。
+
 18. 定义一个表示长方形的结构体，包含长和宽，写函数求面积。
+
+答案：
+
+```c
+struct Rect
+{
+    double length;
+    double width;
+};
+
+double area(struct Rect r)
+{
+    return r.length * r.width;
+}
+```
+
+易错点：
+
+- 长和宽可能是小数，用 `double` 更灵活。
+
 19. 定义一个表示复数的结构体，包含实部和虚部，写函数输出它。
+
+答案：
+
+```c
+struct Complex
+{
+    double real;
+    double imag;
+};
+
+void print_complex(struct Complex c)
+{
+    printf("%.2f + %.2fi\n", c.real, c.imag);
+}
+```
+
+易错点：
+
+- 复数的实部和虚部是两个相关数据，适合用结构体打包。
+
 20. 定义一个链表结点结构体，包含数据域和指针域。
+
+答案：
+
+```c
+struct Node
+{
+    int data;
+    struct Node *next;
+};
+```
+
+易错点：
+
+- 链表结点里必须有一个指向同类型结点的指针。
+
 21. 手动建立一个 3 个结点的链表，并输出所有结点数据。
+
+答案：
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+struct Node
+{
+    int data;
+    struct Node *next;
+};
+
+int main(void)
+{
+    struct Node a = {1, NULL};
+    struct Node b = {2, NULL};
+    struct Node c = {3, NULL};
+    struct Node *p;
+
+    a.next = &b;
+    b.next = &c;
+
+    p = &a;
+    while (p != NULL)
+    {
+        printf("%d ", p->data);
+        p = p->next;
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 链表靠 `next` 把一个结点接到下一个结点。
+- 遍历时条件是 `p != NULL`。
+
 22. 写函数统计链表中结点个数。
+
+答案：
+
+```c
+int count_nodes(struct Node *head)
+{
+    int count = 0;
+
+    while (head != NULL)
+    {
+        count++;
+        head = head->next;
+    }
+
+    return count;
+}
+```
+
+易错点：
+
+- 每经过一个结点，计数加 1，并移动到下一个结点。
+
 23. 在链表头部插入一个新结点。
+
+答案：
+
+```c
+struct Node *insert_head(struct Node *head, struct Node *new_node)
+{
+    new_node->next = head;
+    return new_node;
+}
+```
+
+易错点：
+
+- 头插后，新结点会变成新的头结点，所以要返回 `new_node`。
+
 24. 在链表中间某个结点后插入新结点。
+
+答案：
+
+```c
+void insert_after(struct Node *pos, struct Node *new_node)
+{
+    new_node->next = pos->next;
+    pos->next = new_node;
+}
+```
+
+易错点：
+
+- 一定要先让新结点指向原来的后继结点，再让前一个结点指向新结点。
+- 两句顺序反了，容易把后面的链表弄丢。
+
 25. 删除链表中值为 `x` 的第一个结点。
+
+答案：
+
+```c
+struct Node *delete_first(struct Node *head, int x)
+{
+    struct Node *p = head;
+    struct Node *prev = NULL;
+
+    while (p != NULL && p->data != x)
+    {
+        prev = p;
+        p = p->next;
+    }
+
+    if (p == NULL) {
+        return head;
+    }
+
+    if (prev == NULL) {
+        head = p->next;
+    }
+    else {
+        prev->next = p->next;
+    }
+
+    free(p);
+    return head;
+}
+```
+
+易错点：
+
+- 删除头结点时要单独处理，因为头指针会变化。
+- 动态申请的结点删除后要 `free`。
+
 26. 写函数释放整个链表。
+
+答案：
+
+```c
+void free_list(struct Node *head)
+{
+    struct Node *p;
+
+    while (head != NULL)
+    {
+        p = head;
+        head = head->next;
+        free(p);
+    }
+}
+```
+
+易错点：
+
+- 要先保存当前结点，再移动 `head`，最后释放当前结点。
+
 27. 定义一个共用体，包含 `int`、`char`、`float` 三种成员，并练习赋值输出。
+
+答案：
+
+```c
+#include <stdio.h>
+
+union Data
+{
+    int i;
+    char c;
+    float f;
+};
+
+int main(void)
+{
+    union Data d;
+
+    d.i = 100;
+    printf("%d\n", d.i);
+
+    d.c = 'A';
+    printf("%c\n", d.c);
+
+    d.f = 3.14f;
+    printf("%.2f\n", d.f);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 共用体成员共用同一块内存，后赋值的成员会影响之前成员的内容。
+
 28. 定义一个枚举类型表示星期，并输出某一天对应的整数值。
+
+答案：
+
+```c
+#include <stdio.h>
+
+enum Weekday
+{
+    MON,
+    TUE,
+    WED,
+    THU,
+    FRI,
+    SAT,
+    SUN
+};
+
+int main(void)
+{
+    enum Weekday day = FRI;
+
+    printf("%d\n", day);
+    return 0;
+}
+```
+
+易错点：
+
+- 默认 `MON = 0`，所以 `FRI = 4`。
+
 29. 用枚举类型表示成绩等级，例如 `A`、`B`、`C`、`D`。
+
+答案：
+
+```c
+enum Grade
+{
+    A,
+    B,
+    C,
+    D
+};
+```
+
+易错点：
+
+- 枚举常量是标识符，不是字符。这里的 `A` 不是 `'A'`。
+
 30. 用 `typedef` 给结构体类型起别名，并定义变量。
+
+答案：
+
+```c
+typedef struct Student
+{
+    int num;
+    char name[20];
+    double score;
+} Student;
+
+Student stu = {1001, "Tom", 90.5};
+```
+
+易错点：
+
+- 起别名后可以直接写 `Student stu;`，不用每次都写 `struct Student stu;`。
+
 31. 用 `typedef` 给指针类型起别名。
+
+答案：
+
+```c
+typedef int *IntPtr;
+
+IntPtr p1, p2;
+```
+
+解析：
+
+这里 `p1` 和 `p2` 都是 `int *`。
+
+易错点：
+
+- 如果不用 `typedef`，写 `int *p1, p2;` 时只有 `p1` 是指针，`p2` 是普通 `int`。
 
 ### 改错题
 
@@ -1047,6 +1716,26 @@ struct Student
     float score;
 }
 ```
+
+答案：
+
+错误原因：
+
+结构体类型定义结尾缺少分号。
+
+正确写法：
+
+```c
+struct Student
+{
+    int num;
+    float score;
+};
+```
+
+易错点：
+
+- `struct` 定义结束的 `}` 后面必须写 `;`。
 
 33. 找出并改正下面程序中的错误。
 
@@ -1066,6 +1755,41 @@ int main(void)
 }
 ```
 
+答案：
+
+错误原因：
+
+`p` 是结构体指针，访问成员不能写：
+
+```c
+p.num = 1001;
+```
+
+正确写法：
+
+```c
+p->num = 1001;
+```
+
+完整修正：
+
+```c
+int main(void)
+{
+    struct Student stu;
+    struct Student *p = &stu;
+
+    p->num = 1001;
+
+    return 0;
+}
+```
+
+易错点：
+
+- 普通结构体变量用 `.`。
+- 结构体指针用 `->`。
+
 34. 找出并改正下面程序中的错误。
 
 ```c
@@ -1083,6 +1807,61 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+错误原因：
+
+```c
+*p.num
+```
+
+会先把 `.` 和 `num` 结合，等价于：
+
+```c
+*(p.num)
+```
+
+但 `p` 是指针，不是结构体变量，所以错误。
+
+正确写法一：
+
+```c
+printf("%d\n", (*p).num);
+```
+
+正确写法二：
+
+```c
+printf("%d\n", p->num);
+```
+
+完整修正：
+
+```c
+#include <stdio.h>
+
+struct Student
+{
+    int num;
+    float score;
+};
+
+int main(void)
+{
+    struct Student stu = {1001, 90.0f};
+    struct Student *p = &stu;
+
+    printf("%d\n", p->num);
+
+    return 0;
+}
+```
+
+易错点：
+
+- `(*p).num` 里的括号很重要。
+- 更推荐初学者写 `p->num`。
 
 35. 找出并改正下面程序中的错误。
 
@@ -1102,6 +1881,48 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+问题说明：
+
+这段代码语法上可能能编译，但逻辑上有问题：共用体 `union` 的所有成员共用同一块内存。先给 `x.i` 赋值，再给 `x.c` 赋值，后一次赋值会覆盖同一块内存的一部分或全部，因此再输出 `x.i` 的结果不可靠。
+
+如果想同时保存 `i` 和 `c`，应该用结构体：
+
+```c
+#include <stdio.h>
+
+struct Data
+{
+    int i;
+    char c;
+};
+
+int main(void)
+{
+    struct Data x;
+
+    x.i = 100;
+    x.c = 'A';
+
+    printf("%d %c\n", x.i, x.c);
+    return 0;
+}
+```
+
+如果只是练习共用体，就应该只输出最后赋值的成员：
+
+```c
+union Data x;
+x.c = 'A';
+printf("%c\n", x.c);
+```
+
+易错点：
+
+- 结构体的成员各自有独立存储空间。
+- 共用体的成员共用同一块存储空间，不能同时独立保存多个成员值。
 
 ## 12. 自测清单
 

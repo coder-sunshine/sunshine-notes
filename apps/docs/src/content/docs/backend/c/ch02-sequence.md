@@ -249,6 +249,22 @@ int main(void)
 }
 ```
 
+答案：
+
+```text
+3
+1
+```
+
+解析：
+
+`a / b` 是整数除法，`10 / 3` 的结果是 `3`，小数部分会被舍掉。`a % b` 是求余数，`10 % 3` 的结果是 `1`。
+
+易错点：
+
+- 两个整数相除，结果仍然是整数。
+- `/` 是商，`%` 是余数。
+
 2. 写出下面程序的输出结果。
 
 ```c
@@ -260,6 +276,21 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+```text
+A 65
+```
+
+解析：
+
+`%c` 按字符输出，所以输出 `A`。`%d` 按整数输出，会输出字符 `A` 对应的 ASCII 码值，也就是 `65`。
+
+易错点：
+
+- 字符变量本质上也可以当整数参与输出和计算。
+- `%c` 和 `%d` 输出同一个字符变量时，看到的结果会不一样。
 
 3. 写出下面程序的输出结果。
 
@@ -273,6 +304,26 @@ int main(void)
     return 0;
 }
 ```
+
+答案：
+
+```text
+7
+```
+
+解析：
+
+逗号表达式会从左到右依次计算，但整个表达式的值取最后一个表达式的值。
+
+```c
+(3, 5, 7)
+```
+
+最终值是 `7`，所以 `a = 7`。
+
+易错点：
+
+- 逗号表达式不是把几个数都赋给变量，只会把最后一个表达式的值作为整体结果。
 
 ### 改错题
 
@@ -289,6 +340,38 @@ int main()
 }
 ```
 
+答案：
+
+原程序问题：
+
+- `scanf("%d", a);` 少了取地址符 `&`。
+- `a` 定义为 `int`，却想保存 `3.5` 这种小数。
+- `printf("%f\n", a);` 中 `%f` 要对应 `double` 或 `float` 类型的实数，不应该对应 `int`。
+- `int main()` 最好写成 `int main(void)`，并在最后写 `return 0;`。
+
+一种正确写法：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    double a;
+
+    scanf("%lf", &a);
+    a = 3.5;
+    printf("%f\n", a);
+
+    return 0;
+}
+```
+
+易错点：
+
+- `scanf` 给普通变量输入时，一般要写 `&变量名`。
+- `double` 输入用 `%lf`，输出用 `%f`。
+- 变量类型、输入格式符、输出格式符要对应。
+
 5. 修改下面程序，使它能正确输入半径并输出圆面积。
 
 ```c
@@ -302,18 +385,312 @@ int main(void)
 }
 ```
 
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    double r;
+    double area;
+
+    scanf("%lf", &r);
+    area = 3.14 * r * r;
+    printf("%f\n", area);
+
+    return 0;
+}
+```
+
+解析：
+
+半径和面积一般可能是小数，所以用 `double` 更合适。`scanf` 输入 `double` 时用 `%lf`，输出 `double` 时用 `%f`。
+
+易错点：
+
+- 原程序把 `r` 定义成 `int`，却用 `%f` 输入，类型不匹配。
+- 面积是小数时，不能用 `%d` 输出。
+
 ### 手写程序题
 
 6. 输入两个整数，输出它们的和、差、积、商。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int a, b;
+
+    scanf("%d%d", &a, &b);
+
+    printf("sum=%d\n", a + b);
+    printf("diff=%d\n", a - b);
+    printf("mul=%d\n", a * b);
+
+    if (b != 0) {
+        printf("div=%d\n", a / b);
+    }
+    else {
+        printf("b cannot be 0\n");
+    }
+
+    return 0;
+}
+```
+
+易错点：
+
+- 除法前要考虑除数不能为 `0`。
+- 如果想得到小数商，可以写 `(double)a / b`。
+
 7. 输入圆半径 `r`，输出圆面积和圆周长。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    double r;
+    double area, length;
+
+    scanf("%lf", &r);
+
+    area = 3.14 * r * r;
+    length = 2 * 3.14 * r;
+
+    printf("area=%f\n", area);
+    printf("length=%f\n", length);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 圆面积是 `3.14 * r * r`。
+- 圆周长是 `2 * 3.14 * r`。
+
 8. 输入三个整数，输出它们的和与平均值。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int a, b, c;
+    int sum;
+    double avg;
+
+    scanf("%d%d%d", &a, &b, &c);
+
+    sum = a + b + c;
+    avg = sum / 3.0;
+
+    printf("sum=%d\n", sum);
+    printf("avg=%f\n", avg);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 平均值可能是小数，所以用 `double`。
+- `sum / 3.0` 可以避免整数除法。
+
 9. 输入摄氏温度，输出华氏温度。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    double c, f;
+
+    scanf("%lf", &c);
+
+    f = c * 9 / 5 + 32;
+    printf("%f\n", f);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 摄氏转华氏公式是 `F = C * 9 / 5 + 32`。
+- 如果用整数写 `9 / 5`，结果会变成 `1`，所以这里用 `double` 变量参与运算。
+
 10. 输入一个三位数，输出各位数字之和。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int n;
+    int a, b, c;
+
+    scanf("%d", &n);
+
+    a = n / 100;
+    b = n / 10 % 10;
+    c = n % 10;
+
+    printf("%d\n", a + b + c);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 百位：`n / 100`。
+- 十位：`n / 10 % 10`。
+- 个位：`n % 10`。
+
 11. 输入秒数，换算成“几小时几分钟几秒”。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int total;
+    int hour, minute, second;
+
+    scanf("%d", &total);
+
+    hour = total / 3600;
+    minute = total % 3600 / 60;
+    second = total % 60;
+
+    printf("%d小时%d分钟%d秒\n", hour, minute, second);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 1 小时是 `3600` 秒。
+- 分钟要先去掉完整小时：`total % 3600 / 60`。
+
 12. 输入两个整数，交换后输出。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int a, b, t;
+
+    scanf("%d%d", &a, &b);
+
+    t = a;
+    a = b;
+    b = t;
+
+    printf("%d %d\n", a, b);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 交换两个变量通常需要第三个临时变量 `t`。
+- 不能直接写 `a = b; b = a;`，这样原来的 `a` 会丢失。
+
 13. 输入商品单价和数量，输出总价。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    double price, total;
+    int count;
+
+    scanf("%lf%d", &price, &count);
+
+    total = price * count;
+    printf("%f\n", total);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 单价可能是小数，用 `double` 更合适。
+- 数量一般是整数，用 `int`。
+
 14. 输入梯形上底、下底和高，输出面积。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    double a, b, h, area;
+
+    scanf("%lf%lf%lf", &a, &b, &h);
+
+    area = (a + b) * h / 2;
+    printf("%f\n", area);
+
+    return 0;
+}
+```
+
+易错点：
+
+- 梯形面积公式是 `(上底 + 下底) * 高 / 2`。
+- 不要漏掉括号，否则运算顺序会错。
+
 15. 输入一个字符，输出它对应的 ASCII 码值。
+
+答案：
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    char c;
+
+    scanf("%c", &c);
+    printf("%d\n", c);
+
+    return 0;
+}
+```
+
+易错点：
+
+- `%c` 用来输入字符。
+- `%d` 可以输出字符对应的 ASCII 码值。
 
 ## 10. 自测清单
 
