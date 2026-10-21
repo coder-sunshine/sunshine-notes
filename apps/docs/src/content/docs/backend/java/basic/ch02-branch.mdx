@@ -1,0 +1,1015 @@
+---
+title: 第二章：键盘输入、运算与条件判断
+description: 基于 JDK 17 学习 Scanner 输入、算术与逻辑运算、类型转换、if 和 switch，完成成绩判断与简单计算器。
+sidebar:
+  label: 第二章：输入与分支
+  order: 2
+---
+
+第一章使用固定数据进行计算。本章把数据改为键盘输入，再让程序根据不同条件选择操作，例如判断奇偶、划分成绩等级、选择加减乘除。
+
+本章沿用 **JDK 17**。标记为 `java` 的代码块都是完整程序，新建与公开类名一致的 `.java` 文件即可运行；放进现有教学项目时，保留对应目录的包声明。程序每次启动只处理一组输入，暂不使用循环、数组、自定义方法或异常捕获。
+
+## 1. 键盘输入
+
+### 1.1 从固定数据到用户输入
+
+第一章的 `int age = 19;` 把年龄固定在源代码中。要改变年龄，需要修改代码再运行。
+
+使用键盘输入后，代码中的读取步骤保持不变，运行时可以输入不同的数据。程序会在执行到读取语句时等待输入，用户提交后才继续向下执行。
+
+在 IDEA 中运行时，点击运行窗口的控制台，键入内容并按回车。**等待输入不代表程序卡住**，也不要把数据直接输进源代码编辑区。
+
+### 1.2 准备 Scanner 输入工具
+
+`Scanner` 是 Java 标准库提供的输入工具，本章按以下顺序使用：
+
+1. 在类声明之前写 `import java.util.Scanner;`，引入这个类型。
+2. 在 `main` 内写 `Scanner scanner = new Scanner(System.in);`，准备从标准输入读取数据。
+3. 使用 `scanner.nextInt()` 等读取方法取得数据，保存进变量。
+4. 读取完成后调用 `scanner.close();`，关闭输入工具。
+
+如果文件有 `package` 声明，顺序是：**package → import → class**。`Scanner` 类型名首字母大写，变量名 `scanner` 首字母小写。
+
+`new`、对象和方法调用的原理会在后续章节展开，当前先理解工具的用途与读取顺序。
+
+关闭这个 Scanner 也会关闭它所使用的 `System.in`。本章各示例独立启动，读完数据后关闭即可；不要在同一次运行中关闭后，再新建 Scanner 尝试继续读取键盘。
+
+### 1.3 选择读取方法
+
+| 方法           | 返回类型 | 读取内容                             | 适合的例子             |
+| -------------- | -------- | ------------------------------------ | ---------------------- |
+| `nextInt()`    | `int`    | 一个整数片段                         | 年龄、整数成绩         |
+| `nextDouble()` | `double` | 一个浮点数片段                       | 身高、计算器操作数     |
+| `next()`       | `String` | 一个非空白片段                       | `+`、`-` 等运算符      |
+| `nextLine()`   | `String` | 当前行剩余内容，返回值不包含行结束符 | 姓名、包含空格的一句话 |
+
+前三种方法按片段读取，默认把空格、换行等空白当作分隔符。例如，连续调用两次 `nextInt()`，输入 `78 91` 或分两行输入 `78`、`91`，都能读到两个整数。
+
+`next()` 遇到空白就结束当前片段，不能用来读取带空格的一整句目标；`nextLine()` 可以保留当前行文字中的空格。
+
+本章小数输入使用英文小数点，例如 `1.65`。Scanner 的数字格式受区域设置影响，下面的示例按支持英文小数点的区域设置运行。
+
+### 1.4 读取姓名、年龄、身高与学习目标
+
+```java
+import java.util.Scanner;
+
+public class ScannerInputDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.println("请输入姓名：");
+        String studentName = scanner.nextLine();
+
+        System.out.println("请输入年龄（整数）：");
+        int age = scanner.nextInt();
+
+        System.out.println("请输入身高（米，例如 1.65）：");
+        double height = scanner.nextDouble();
+
+        // 读完数字后，先消费当前行剩余内容及行结束符。
+        scanner.nextLine();
+        System.out.println("请输入今天的学习目标：");
+        String learningGoal = scanner.nextLine();
+        scanner.close();
+
+        System.out.println("姓名：" + studentName);
+        System.out.println("年龄：" + age);
+        System.out.println("身高（米）：" + height);
+        System.out.println("学习目标：" + learningGoal);
+    }
+}
+```
+
+依次输入：
+
+```text
+小林
+19
+1.65
+学会 Java 输入
+```
+
+程序输出：
+
+```text
+请输入姓名：
+请输入年龄（整数）：
+请输入身高（米，例如 1.65）：
+请输入今天的学习目标：
+姓名：小林
+年龄：19
+身高（米）：1.65
+学习目标：学会 Java 输入
+```
+
+为区分输入与输出，本文将两者分别列出。实际控制台中，你键入的内容会出现在相应提示之后。
+
+### 1.5 为什么数字后面要额外读取一次 nextLine
+
+在上例中输入 `1.65` 并按回车，`nextDouble()` 读取数字片段，但紧接数字后的行结束符还没有被 `nextLine()` 消费。
+
+如果直接读取学习目标，`nextLine()` 会读取**当前这一行剩下的内容**。数字后没有其他文字时，它会得到空字符串，并消费行结束符，看起来像是“跳过了学习目标输入”。
+
+上例的第一句 `scanner.nextLine();` 用于消费数字所在行的剩余内容和行结束符，第二次调用才读取下一行目标。
+
+这个处理以“数字输入完后，下一项文字另起一行”为约定。如果数字后同一行还有有用文字，额外的 `nextLine()` 也会将它读走，不能不分输入格式地机械添加。
+
+连续使用 `nextInt()`、`nextDouble()` 时，下一次片段读取会跳过前面的空白，通常不需要在每次读取之间添加 `nextLine()`。
+
+### 1.6 输入类型与业务范围
+
+“可以读成数字”和“符合程序要求”是两件事。
+
+| 输入情况                            | 性质                       | 本章如何处理                     |
+| ----------------------------------- | -------------------------- | -------------------------------- |
+| `nextInt()` 读取 `85`               | 符合 int 类型              | 正常读取                         |
+| `nextInt()` 读取 `101` 作为成绩     | 类型正确，但成绩范围不合法 | 使用 if 判断范围                 |
+| `nextInt()` 读取 `85.5` 或 `abc`    | 不符合整数读取要求         | 会出现输入异常，异常处理以后学习 |
+| `nextInt()` 读取超出 int 范围的整数 | 不符合 int 的取值范围      | 本章先约定不输入此类数据         |
+
+下面示例约定数字位置输入类型正确、数据完整；小数使用普通有限数值，不输入 `NaN`、`Infinity` 或极端数值。成绩和星期编号超出业务范围的情况，则由本章分支逻辑处理。
+
+## 2. 算术与赋值运算
+
+### 2.1 加减乘除与求余
+
+| 运算符 | 含义 | 示例     | 结果                  |
+| ------ | ---- | -------- | --------------------- |
+| `+`    | 加法 | `17 + 5` | `22`                  |
+| `-`    | 减法 | `17 - 5` | `12`                  |
+| `*`    | 乘法 | `17 * 5` | `85`                  |
+| `/`    | 除法 | `17 / 5` | `3`，因为两边都是整数 |
+| `%`    | 求余 | `17 % 5` | `2`                   |
+
+```java
+public class ArithmeticOperatorDemo {
+    public static void main(String[] args) {
+        int firstNumber = 17;
+        int secondNumber = 5;
+
+        // 括号内先计算，再与提示文字拼接。
+        System.out.println("加法：" + (firstNumber + secondNumber));
+        System.out.println("减法：" + (firstNumber - secondNumber));
+        System.out.println("乘法：" + (firstNumber * secondNumber));
+        System.out.println("整数除法：" + (firstNumber / secondNumber));
+        System.out.println("求余：" + (firstNumber % secondNumber));
+
+        System.out.println("先乘后加：" + (2 + 3 * 4));
+        System.out.println("先算括号：" + ((2 + 3) * 4));
+    }
+}
+```
+
+运行结果：
+
+```text
+加法：22
+减法：12
+乘法：85
+整数除法：3
+求余：2
+先乘后加：14
+先算括号：20
+```
+
+`%` 在 Java 中表示求余，不是百分号。`17 % 5` 得到 `2`，可以通过 `17 = 3 × 5 + 2` 理解。
+
+### 2.2 整数除法与负数余数
+
+整数除法会把结果的小数部分**向零截去**，不是四舍五入，也不是一律向下取整：
+
+| 表达式     | 结果  |
+| ---------- | ----- |
+| `17 / 5`   | `3`   |
+| `-17 / 5`  | `-3`  |
+| `17 / 5.0` | `3.4` |
+| `-3 % 2`   | `-1`  |
+| `-2 % 2`   | `0`   |
+
+判断整数是否为偶数时，用 `number % 2 == 0`；否则就是奇数。`number % 2 == 1` 无法识别负奇数，因为负奇数除以 2 的余数是 `-1`。
+
+整数除以 0 或对 0 求余会抛出 `ArithmeticException`。浮点数除以零通常不会抛出这个异常：非零有限数除以零会得到带符号的无穷大，零除以零会得到 `NaN`。因此计算器需要主动检查除数，而不能只依赖程序是否报错。
+
+### 2.3 运算顺序与括号
+
+本章先记住：
+
+1. 括号中的表达式先计算。
+2. 乘法、除法、求余的优先级相同，高于加减；同级连续运算按从左到右结合。
+3. 加法和减法的优先级相同；字符串参与 `+` 时，还要判断这一步是加法还是拼接。
+
+例如 `2 + 3 * 4` 得到 `14`，`(2 + 3) * 4` 得到 `20`。输出总分时，写 `"总分：" + (firstScore + secondScore)`，避免把两个数字分别拼接到文字后面。
+
+即使知道优先级，也可以用适当的括号表达意图。较长的计算可以拆成含义清楚的变量，不需要为了缩短代码把所有操作写在同一行。
+
+### 2.4 复合赋值与独立使用的自增
+
+`=` 是赋值运算符。对本章的 `int` 计数变量，`count += 2;` 可以理解为把原值加 2 后重新保存；`count++;` 则把值增加 1。
+
+```java
+public class AssignmentUpdateDemo {
+    public static void main(String[] args) {
+        int completedExercises = 1;
+
+        // 本例相当于 completedExercises = completedExercises + 2;
+        completedExercises += 2;
+        System.out.println("增加两题后：" + completedExercises);
+
+        // 单独使用自增语句，先观察变量值的变化。
+        completedExercises++;
+        System.out.println("再增加一题后：" + completedExercises);
+    }
+}
+```
+
+运行结果：
+
+```text
+增加两题后：3
+再增加一题后：4
+```
+
+还有 `-=`、`*=`、`/=`、`%=` 和自减 `--`，遇到时再使用。复合赋值还涉及隐式类型转换，不能对所有类型都简单替换成普通赋值表达式。
+
+本章只把 `++` 作为单独一条语句使用，暂不混入输出或复杂计算中；前置和后置自增的表达式区别留到熟悉基础之后再讨论。
+
+## 3. 类型转换
+
+### 3.1 自动类型转换
+
+Java 允许某些类型的值在赋值或运算时自动转换，例如把一个 `int` 赋给 `double`：`double decimalScore = score;`。
+
+在 `score` 为 `90` 时，转换后的值是 `90.0`，但 `score` 变量本身仍然是 `int`，它的类型没有改变。
+
+不要理解为“所有类型都可以互相赋值”。例如，小数不能直接赋给 int，字符串也不会因为看起来像数字就自动变成 int。
+
+### 3.2 强制类型转换
+
+强制转换写成 **`(目标类型) 表达式`**。例如 `(int) originalScore` 把一个 double 值转换成 int。
+
+对于本章范围内的普通小数，转成 int 会向零截去小数部分：`(int) 89.9` 得到 `89`，`(int) -89.9` 得到 `-89`，并非四舍五入。
+
+```java
+public class TypeConversionDemo {
+    public static void main(String[] args) {
+        int score = 90;
+        double decimalScore = score;
+        System.out.println("int 转 double：" + decimalScore);
+
+        double originalScore = 89.9;
+        int integerScore = (int) originalScore;
+        System.out.println("double 转 int：" + integerScore);
+        System.out.println("负小数转 int：" + (int) -89.9);
+
+        int totalScore = 169;
+        int subjectCount = 2;
+        // 两个整数先相除，小数已经丢失。
+        double averageAfterDivision = totalScore / subjectCount;
+        // 先把其中一个操作数转成 double，再进行除法。
+        double averageBeforeDivision = (double) totalScore / subjectCount;
+        // 转换整个整数除法结果，也无法恢复小数。
+        double convertedResult = (double) (totalScore / subjectCount);
+
+        System.out.println("先整数相除再赋值：" + averageAfterDivision);
+        System.out.println("先转换再相除：" + averageBeforeDivision);
+        System.out.println("除完再强制转换：" + convertedResult);
+    }
+}
+```
+
+运行结果：
+
+```text
+int 转 double：90.0
+double 转 int：89
+负小数转 int：-89
+先整数相除再赋值：84.0
+先转换再相除：84.5
+除完再强制转换：84.0
+```
+
+### 3.3 转换时机决定计算结果
+
+比较三种写法：
+
+| 表达式                                 | 计算过程                       | 结果   |
+| -------------------------------------- | ------------------------------ | ------ |
+| `totalScore / subjectCount`            | 两个 int 相除                  | `84`   |
+| `(double) totalScore / subjectCount`   | 先转换一个操作数，再做浮点除法 | `84.5` |
+| `(double) (totalScore / subjectCount)` | 先做整数除法，再转换结果       | `84.0` |
+
+固定计算两门平均分时，可以直接使用 `totalScore / 2.0`；除数来自整数变量时，使用先转换操作数的写法更能表达意图。
+
+### 3.4 类型转换的边界
+
+不要把强制转换当作“修复报错”的通用办法。它可能截去小数、丢失信息；转换超出目标范围的值时，还会有额外规则，当前不依赖这些行为。
+
+自动转换也不总能保持精度，例如较大的 int 转成 float，或较大的 long 转成 double，可能发生精度损失。本章普通成绩的 int 转 double 可以精确表示，但不能据此推断所有数值转换都不会改变数值。
+
+## 4. 比较与逻辑运算
+
+### 4.1 比较运算得到 boolean
+
+比较表达式的结果是 `true` 或 `false`，可以保存到 boolean 变量中，也可以直接作为 if 条件。
+
+| 运算符 | 含义                         | 示例           |
+| ------ | ---------------------------- | -------------- |
+| `>`    | 大于                         | `score > 60`   |
+| `>=`   | 大于或等于                   | `score >= 60`  |
+| `<`    | 小于                         | `score < 60`   |
+| `<=`   | 小于或等于                   | `score <= 100` |
+| `==`   | 相等，本章用于数字或布尔值   | `score == 100` |
+| `!=`   | 不相等，本章用于数字或布尔值 | `score != 0`   |
+
+`=` 用于赋值，`==` 才用于比较是否相等。字符串的内容比较不使用 `==`，String 章节会学习相应方法；本章运算符字符串的选择使用 switch。
+
+### 4.2 逻辑与、逻辑或、逻辑非
+
+| 运算符 | 含义             | 示例                         |
+| ------ | ---------------- | ---------------------------- |
+| `&&`   | 两个条件都成立   | `score >= 0 && score <= 100` |
+| `\|\|` | 至少一个条件成立 | `score < 0 \|\| score > 100` |
+| `!`    | 对布尔值取反     | `!hasStudentCard`            |
+
+设两个布尔值分别为 A、B：
+
+| A     | B     | A && B | A 或 B |
+| ----- | ----- | ------ | ------ |
+| true  | true  | true   | true   |
+| true  | false | false  | true   |
+| false | true  | false  | true   |
+| false | false | false  | false  |
+
+“或”也包含两个条件同时成立的情况。`!true` 得到 `false`，`!false` 得到 `true`。
+
+### 4.3 表达范围条件
+
+“成绩在 0～100 之间，包含两端”需要同时满足两个条件，因此写成 `score >= 0 && score <= 100`。
+
+“成绩超出范围”则表示小于 0 **或者**大于 100，写成 `score < 0 || score > 100`。
+
+Java 不能使用数学中的连写方式 `0 <= score <= 100`。第一次比较已经得到 boolean，不能再拿它与整数 100 比较。
+
+```java
+public class ComparisonLogicalDemo {
+    public static void main(String[] args) {
+        int age = 19;
+        int score = 85;
+        boolean hasStudentCard = true;
+
+        System.out.println("是否成年：" + (age >= 18));
+        System.out.println("成绩是否等于 100：" + (score == 100));
+        System.out.println("成绩是否不等于 0：" + (score != 0));
+        System.out.println("成绩在合法范围：" + (score >= 0 && score <= 100));
+        System.out.println("成绩超出合法范围：" + (score < 0 || score > 100));
+        System.out.println("成年且有学生证：" + (age >= 18 && hasStudentCard));
+        System.out.println("没有学生证：" + !hasStudentCard);
+
+        int divisor = 0;
+        // 左侧已能决定结果时，不执行右侧的除法。
+        System.out.println("与的短路结果：" + (divisor != 0 && 10 / divisor > 1));
+        System.out.println("或的短路结果：" + (divisor == 0 || 10 / divisor > 1));
+    }
+}
+```
+
+运行结果：
+
+```text
+是否成年：true
+成绩是否等于 100：false
+成绩是否不等于 0：true
+成绩在合法范围：true
+成绩超出合法范围：false
+成年且有学生证：true
+没有学生证：false
+与的短路结果：false
+或的短路结果：true
+```
+
+### 4.4 短路求值
+
+`&&` 从左侧开始判断。如果左侧是 false，整个表达式已经不可能为 true，右侧就不再求值。
+
+`||` 也从左侧开始判断。如果左侧是 true，整个表达式已经为 true，右侧就不再求值。
+
+上例中，`divisor != 0 && 10 / divisor > 1` 的左侧为 false，因此不会执行除以零。这个顺序很重要，不能把可能出错的除法放到左边，再指望右边的检查保护它。
+
+单个 `&`、`|` 与这里使用的短路运算符不同。不要为了少打一个符号，把 `&&`、`||` 改成单个符号；位运算的其他用途以后再学习。
+
+### 4.5 组合条件的阅读顺序
+
+本章涉及的运算中，算术通常先于比较，比较先于 `&&`，`&&` 先于 `||`。逻辑非 `!` 的优先级较高，要对整个比较取反时使用括号，例如 `!(score >= 60)`。
+
+较长的条件应按含义分组。例如判断公历闰年，可以写成 `(year % 4 == 0 && year % 100 != 0) || year % 400 == 0`。先分别理解“能被 4 整除但不能被 100 整除”和“能被 400 整除”，再用或连接。
+
+不需要一开始背下完整优先级表；先把每个比较条件解释清楚，再用括号保证可读性。
+
+## 5. if 条件分支
+
+### 5.1 单分支：条件成立才执行
+
+单分支 if 的作用是：条件为 true，执行花括号中的语句；条件为 false，跳过这段代码。
+
+例如，`temperature >= 30` 时输出补水提醒，不满足时就不输出这条提醒。if 的括号里必须是 boolean 表达式，不能直接写整数 `1` 代表“真”。
+
+### 5.2 双分支：两个结果选一个
+
+if-else 为条件成立和不成立分别提供处理，两边只会执行一边。
+
+```java
+public class IfElseDemo {
+    public static void main(String[] args) {
+        int temperature = 32;
+        // 单分支：不满足条件时，直接跳过提醒。
+        if (temperature >= 30) {
+            System.out.println("天气较热，记得补水。");
+        }
+
+        int age = 17;
+        // 双分支：根据条件选择一边执行。
+        if (age >= 18) {
+            System.out.println("已经成年。");
+        } else {
+            System.out.println("尚未成年。");
+        }
+
+        System.out.println("判断结束。");
+    }
+}
+```
+
+运行结果：
+
+```text
+天气较热，记得补水。
+尚未成年。
+判断结束。
+```
+
+分支执行完毕后，程序继续执行后面的语句；else 并不表示程序结束。统一保留花括号，即使分支中只有一行，也能减少以后添加语句时的错误。
+
+### 5.3 用 if-else 判断奇偶
+
+整数只有奇数和偶数两种情况，用二选一的分支很合适。
+
+```java
+import java.util.Scanner;
+
+public class EvenOddDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入一个整数：");
+        int number = scanner.nextInt();
+        scanner.close();
+
+        // 0 和负偶数除以 2 的余数也为 0。
+        if (number % 2 == 0) {
+            System.out.println("偶数");
+        } else {
+            System.out.println("奇数");
+        }
+    }
+}
+```
+
+输入：
+
+```text
+-3
+```
+
+程序输出：
+
+```text
+请输入一个整数：
+奇数
+```
+
+再分别输入 `-2`、`0`、`1`、`2` 验证。每组数据重新运行一次，0 应输出“偶数”。
+
+### 5.4 多分支：成绩等级判断
+
+需要从多个互斥结果中选一个时，使用 if-else-if-else。它会按顺序检查，**只执行第一个成立的分支**，之后跳过同一条链的其他分支。
+
+本例的规则如下，成绩是整数：
+
+| 成绩范围          | 结果     |
+| ----------------- | -------- |
+| 小于 0 或大于 100 | 成绩无效 |
+| 90～100           | 优秀     |
+| 80～89            | 良好     |
+| 70～79            | 中等     |
+| 60～69            | 及格     |
+| 0～59             | 不及格   |
+
+```java
+import java.util.Scanner;
+
+public class GradeDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入整数成绩（0～100）：");
+        int score = scanner.nextInt();
+        scanner.close();
+
+        // 先排除范围错误，再按等级从高到低判断。
+        if (score < 0 || score > 100) {
+            System.out.println("成绩无效，请输入 0～100 的整数。");
+        } else if (score >= 90) {
+            System.out.println("等级：优秀");
+        } else if (score >= 80) {
+            System.out.println("等级：良好");
+        } else if (score >= 70) {
+            System.out.println("等级：中等");
+        } else if (score >= 60) {
+            System.out.println("等级：及格");
+        } else {
+            System.out.println("等级：不及格");
+        }
+    }
+}
+```
+
+输入：
+
+```text
+90
+```
+
+程序输出：
+
+```text
+请输入整数成绩（0～100）：
+等级：优秀
+```
+
+判断到 `score >= 80` 时，前面的 `score >= 90` 已经不成立，所以此时已经知道成绩小于 90，不必再重复写上界。
+
+如果把 `score >= 60` 放在最前面，95 分就会先匹配“及格”，后面的“优秀”不再执行。判断顺序必须与规则一致。
+
+用 `-1`、`0`、`59`、`60`、`69`、`70`、`79`、`80`、`89`、`90`、`100`、`101` 验证边界，每次应只输出一条结果。
+
+### 5.5 独立 if 与 else-if 链的区别
+
+多条独立 if 会分别检查自己的条件，不会自动互斥。
+
+```java
+public class IndependentIfDemo {
+    public static void main(String[] args) {
+        int score = 95;
+
+        // 两个条件分别判断，因此两条提醒都可能出现。
+        if (score >= 60) {
+            System.out.println("已达到及格线。");
+        }
+        if (score >= 90) {
+            System.out.println("已达到优秀线。");
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+已达到及格线。
+已达到优秀线。
+```
+
+如果任务是输出所有满足的提醒，多条独立 if 可以使用；如果任务是输出唯一成绩等级，就需要一条互斥的 else-if 链。
+
+### 5.6 选读：三元运算符
+
+三元运算符写成 `条件 ? 成立时的值 : 不成立时的值`。它是产生一个值的表达式，适合简单的二选一赋值。
+
+```java
+public class TernaryDemo {
+    public static void main(String[] args) {
+        int firstNumber = 3;
+        int secondNumber = 8;
+
+        // 选出一个值，再保存到变量中。
+        int largerNumber = firstNumber >= secondNumber ? firstNumber : secondNumber;
+        System.out.println("较大值：" + largerNumber);
+    }
+}
+```
+
+运行结果：
+
+```text
+较大值：8
+```
+
+两个数相等时选哪一个，数值结果都相同。需要多条操作或较复杂判断时，继续使用 if-else，不必把分支嵌套成难读的三元表达式。
+
+## 6. switch 多分支选择
+
+### 6.1 适合处理离散值
+
+if 适合比较大小、判断范围、组合多个条件。switch 适合围绕**一个值**匹配多个明确选项，例如星期编号、菜单编号、计算器运算符。
+
+本章使用 int 和 String 作为 switch 的选择值。在不启用预览特性的 JDK 17 中，不能直接使用 long、float、double 或 boolean 作为 switch 的选择值。其他可用类型在相应章节再介绍。
+
+### 6.2 传统写法：case、break 与 default
+
+```java
+import java.util.Scanner;
+
+public class SwitchDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入星期编号（1～7）：");
+        int day = scanner.nextInt();
+        scanner.close();
+
+        switch (day) {
+            case 1:
+                System.out.println("星期一");
+                break;
+            case 2:
+                System.out.println("星期二");
+                break;
+            case 3:
+                System.out.println("星期三");
+                break;
+            case 4:
+                System.out.println("星期四");
+                break;
+            case 5:
+                System.out.println("星期五");
+                break;
+            case 6:
+                System.out.println("星期六");
+                break;
+            case 7:
+                System.out.println("星期日");
+                break;
+            default:
+                System.out.println("编号无效，请输入 1～7。");
+                break;
+        }
+    }
+}
+```
+
+输入：
+
+```text
+3
+```
+
+程序输出：
+
+```text
+请输入星期编号（1～7）：
+星期三
+```
+
+| 组成           | 作用                                       |
+| -------------- | ------------------------------------------ |
+| `switch (day)` | 读取选择值，寻找匹配选项                   |
+| `case 3:`      | 当选择值为 3 时，从这里开始执行            |
+| `break;`       | 结束当前 switch，继续执行 switch 后的代码  |
+| `default:`     | 没有 case 匹配时执行，本例用于提示编号无效 |
+
+传统写法若缺少 break，会从匹配位置继续执行后续语句，不会在到达下一个 case 时重新判断是否匹配。这叫分支贯穿。最后一个分支末尾的 break 可以省略，但本章统一保留以便阅读。
+
+### 6.3 多个 case 共用处理
+
+工作日与周末判断中，1～5 的处理相同，6～7 的处理相同，可以将标签分组。
+
+```java
+import java.util.Scanner;
+
+public class WeekdayDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入星期编号（1～7）：");
+        int day = scanner.nextInt();
+        scanner.close();
+
+        switch (day) {
+            // 这一组的五个编号共用下面的输出。
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+                System.out.println("工作日");
+                break;
+            case 6:
+            case 7:
+                System.out.println("周末");
+                break;
+            default:
+                System.out.println("编号无效，请输入 1～7。");
+                break;
+        }
+    }
+}
+```
+
+输入：
+
+```text
+6
+```
+
+程序输出：
+
+```text
+请输入星期编号（1～7）：
+周末
+```
+
+共用输出之前的多个 case 没有 break，是有意分组；一组输出结束后，需要 break 防止执行下一组。输入 1～7、0、8 分别检查结果。
+
+### 6.4 选读：JDK 17 的箭头写法
+
+JDK 17 也支持箭头形式的 switch 规则，匹配后执行对应分支，不会自动贯穿到下一条规则，通常不需要写 break。这类语法已在 Java 14 正式提供，在 JDK 17 中无需开启预览。
+
+```java
+public class ArrowSwitchDemo {
+    public static void main(String[] args) {
+        int day = 6;
+
+        // 多个候选值用逗号分隔，每条箭头规则独立执行。
+        switch (day) {
+            case 1, 2, 3, 4, 5 -> System.out.println("工作日");
+            case 6, 7 -> System.out.println("周末");
+            default -> System.out.println("编号无效，请输入 1～7。");
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+周末
+```
+
+这里仍然是 switch 语句。可以返回值的 switch 表达式等更多用法以后再展开。当前先选一种风格写熟，不要在同一个 switch 中混用冒号标签和箭头规则。
+
+## 7. 综合示例
+
+### 7.1 输入两门成绩并计算平均分
+
+先把第一章的固定成绩改为键盘输入。此例假设两门整数成绩都在 0～100 之间，重点观察读取、计算与输出。
+
+```java
+import java.util.Scanner;
+
+public class InputAverageDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入语文成绩：");
+        int chineseScore = scanner.nextInt();
+        System.out.println("请输入数学成绩：");
+        int mathScore = scanner.nextInt();
+        scanner.close();
+
+        int totalScore = chineseScore + mathScore;
+        // 使用浮点除法保留平均分的小数部分。
+        double averageScore = totalScore / 2.0;
+        System.out.println("总分：" + totalScore);
+        System.out.println("平均分：" + averageScore);
+    }
+}
+```
+
+输入：
+
+```text
+78
+91
+```
+
+程序输出：
+
+```text
+请输入语文成绩：
+请输入数学成绩：
+总分：169
+平均分：84.5
+```
+
+也可以自行增加范围判断：两门成绩都合法才计算，否则输出范围提示。注意组合条件时，每一门都需要同时满足下界与上界。
+
+### 7.2 每次运行计算一次的四则计算器
+
+按“第一个数 → 运算符 → 第二个数”的顺序输入，用 switch 选择操作，在除法分支中用 if 检查除数。
+
+```java
+import java.util.Scanner;
+
+public class CalculatorDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入第一个数：");
+        double firstNumber = scanner.nextDouble();
+        System.out.println("请输入运算符（+、-、*、/）：");
+        String operator = scanner.next();
+        System.out.println("请输入第二个数：");
+        double secondNumber = scanner.nextDouble();
+        scanner.close();
+
+        switch (operator) {
+            case "+":
+                System.out.println("结果：" + (firstNumber + secondNumber));
+                break;
+            case "-":
+                System.out.println("结果：" + (firstNumber - secondNumber));
+                break;
+            case "*":
+                System.out.println("结果：" + (firstNumber * secondNumber));
+                break;
+            case "/":
+                // 这是分支中嵌套的判断，先检查再进行除法。
+                if (secondNumber == 0) {
+                    System.out.println("除数不能为 0。");
+                } else {
+                    System.out.println("结果：" + (firstNumber / secondNumber));
+                }
+                break;
+            default:
+                System.out.println("不支持的运算符，请使用 +、-、*、/。");
+                break;
+        }
+    }
+}
+```
+
+输入：
+
+```text
+7
+/
+2
+```
+
+程序输出：
+
+```text
+请输入第一个数：
+请输入运算符（+、-、*、/）：
+请输入第二个数：
+结果：3.5
+```
+
+`operator` 是字符串，case 标签也使用双引号。`next()` 适合读取这里的单个运算符片段；后面调用 `nextDouble()` 会跳过分隔空白，不需要额外消费行结束符。
+
+`secondNumber == 0` 在此处是检查精确的零输入，也会识别 `-0.0`。这不表示任意浮点计算结果都应该使用 `==` 判断近似相等。
+
+### 7.3 检查计算器的不同路径
+
+每组数据重新运行一次，检查最后一行输出：
+
+| 第一个数 | 运算符 | 第二个数 | 最后一行输出                         |
+| -------- | ------ | -------- | ------------------------------------ |
+| 1.5      | `+`    | 2.5      | 结果：4.0                            |
+| 3        | `-`    | 5        | 结果：-2.0                           |
+| -2       | `*`    | 3        | 结果：-6.0                           |
+| 7        | `/`    | 2        | 结果：3.5                            |
+| 7        | `/`    | 0        | 除数不能为 0。                       |
+| 0        | `/`    | 0        | 除数不能为 0。                       |
+| 7        | `%`    | 2        | 不支持的运算符，请使用 +、-、\*、/。 |
+
+虽然前面学过 `%`，这个计算器的需求只支持四则运算，因此它仍属于未知运算符。需要扩展功能时，再明确增加一个对应分支。
+
+本例先读取完整的一组数据，再根据运算符判断，所以即使输入未知运算符，也仍然需要提供第二个数。程序输出一次结果或提示后结束；重复计算要使用下一章的循环。
+
+## 8. 常见错误与排查
+
+### 8.1 输入被跳过或一直等待
+
+文字输入被跳过时，检查是否在数字片段读取后直接使用了 `nextLine()`，以及当前输入约定是否要求另起一行。
+
+一直等待时，检查当前代码正在读第几项、控制台是否获得焦点、输入后是否按了回车。用 `next()` 读取时，只输入空白不能提供一个有效片段，它可能继续等待。
+
+如果出现 `InputMismatchException`，查看是不是把文字、小数或超范围数字输到了 `nextInt()` 中。当前先按约定提供正确类型，异常捕获与重新输入以后再学习。
+
+### 8.2 平均分丢失小数
+
+检查右边的除法操作数，而不只看左边变量是否为 double。`double average = total / count;` 中，total 和 count 都是 int 时，仍会先发生整数除法。
+
+使用 `(double) total / count`，或在固定分母场景中使用 `total / 2.0`，让转换发生在除法之前。
+
+### 8.3 赋值与相等比较混淆
+
+错误写法：
+
+```text
+if (score = 60) {
+    System.out.println("成绩为 60。");
+}
+```
+
+这里把赋值写进了条件，赋值表达式的结果是 int，不符合 if 需要 boolean 的要求。想判断是否相等，应写 `score == 60`。
+
+如果写成 `if (passed = true)`，因为赋值结果恰好是 boolean，反而可能通过编译，却把变量改成 true。读取布尔状态时直接使用 `if (passed)`，不要把编译通过当作条件写对的依据。
+
+### 8.4 if 条件后误加分号
+
+错误写法，if 后面多了一个分号：
+
+```text
+if (age >= 18);
+{
+    System.out.println("已经成年。");
+}
+```
+
+这个分号形成了 if 控制的空语句，后面的代码块不再受条件控制，可能无论年龄多少都输出。正确写法是让左花括号直接跟在条件之后，不加分号。
+
+### 8.5 范围条件、分支顺序与边界错误
+
+| 错误思路                                       | 问题                              | 修改方向            |
+| ---------------------------------------------- | --------------------------------- | ------------------- |
+| 用 `score < 0 && score > 100` 判断非法成绩     | 一个数不可能同时小于 0 又大于 100 | 使用逻辑或          |
+| 用 `score >= 0 \|\| score <= 100` 判断合法成绩 | 对任何整数至少有一边成立          | 使用逻辑与          |
+| 先判断 `score >= 60`，再判断 `score >= 90`     | 高分先进入低等级分支              | 从高到低安排判断    |
+| 用 `score > 90` 表示 90 分起为优秀             | 恰好 90 分未被包含                | 使用 `>= 90`        |
+| 用多条独立 if 输出唯一等级                     | 同一个成绩可能输出多个等级        | 使用一条 else-if 链 |
+| 用 `number % 2 == 1` 判断奇数                  | 负奇数的余数可能是 -1             | 先判断是否为偶数    |
+
+遇到范围错误时，用阈值及其两侧的数据逐个代入。比如及格线是 60，就检查 59、60、61，而不只检查 85 这样远离边界的数。
+
+### 8.6 switch 贯穿与规则不匹配
+
+输入一个星期编号却输出多个结果时，检查对应组结束处是否缺少 break。分组标签之间没有 break 可以是有意安排，但分组处理结束后不能误落入下一组。
+
+case 用于明确的匹配值，不是在每个 case 后写一个范围条件。成绩范围判断使用 if 会更直接；不要为了使用 switch，把本来清楚的范围规则改得难以理解。
+
+### 8.7 除零保护放错位置
+
+检查除数应该发生在除法之前。先计算 `firstNumber / secondNumber`，再判断是否为零，已经来不及保护这次运算。
+
+短路条件也遵循这个顺序。`divisor != 0 && 10 / divisor > 1` 能先检查除数；把两边交换后，会先执行可能出错的除法。
+
+## 9. 本章小结与巩固
+
+### 9.1 核心知识回顾
+
+| 知识点       | 需要记住的内容                                    |
+| ------------ | ------------------------------------------------- |
+| Scanner 输入 | 按需要选择 nextInt、nextDouble、next、nextLine    |
+| 混合读取     | 数字片段后接整行文字时，注意当前行剩余内容        |
+| 算术运算     | 整数除法向零截断，求余可以用于奇偶判断            |
+| 类型转换     | 转换操作数与转换运算结果，时机不同，结果可能不同  |
+| 比较运算     | 比较得到 boolean，赋值使用 `=`，相等比较使用 `==` |
+| 逻辑运算     | 与要求都成立，或要求至少一个成立，非用于取反      |
+| 短路         | 先判断安全条件，再决定是否计算右侧                |
+| if 分支      | 单分支、双分支、多分支分别处理不同选择需求        |
+| switch 分支  | 根据离散值匹配，传统写法注意 break 与分组         |
+| 结果核对     | 检查边界、非法业务范围、除零与未知操作            |
+
+### 9.2 巩固练习
+
+下面题目每次运行只处理一组输入，不要求循环。先独立完成，再看对应示例或仓库参考答案。
+
+**练习 1：输入成绩。** 读取两门整数成绩，计算总分与平均分；增加范围检查，任意一门不在 0～100 时，只输出范围错误提示。验证 `78、91`、`0、100`、`-1、80`、`80、101`。
+
+**练习 2：奇偶判断。** 不看示例重新完成判断，验证 `-3`、`-2`、`0`、`1`、`2`。解释为什么不能用余数等于 1 判断所有奇数。
+
+**练习 3：成绩等级。** 使用一条 else-if 链实现本章等级规则，确保每次只输出一个结果。检查 0、59、60、69、70、79、80、89、90、100 以及范围外输入。
+
+**练习 4：工作日与周末。** 用传统 switch 进行分组，1～5 输出“工作日”，6～7 输出“周末”，其他整数输出编号无效。熟悉后，可以再尝试箭头写法。
+
+**练习 5：简单计算器。** 支持加减乘除，对除数为零和未知运算符给出提示。完成后，为每种运算至少准备一组正常输入，再验证两类错误路径。
+
+**选做：公历闰年。** 读取一个正整数年份。能被 4 整除但不能被 100 整除，或者能被 400 整除，才是闰年；非正数输出年份无效。验证 1900、2000、2023、2024、0。此题按公历规则计算，不讨论历史上各地采用公历的时间。
+
+<details>
+<summary>展开查看闰年题的判断思路</summary>
+
+先使用 `year <= 0` 排除无效年份，再判断：
+
+`(year % 4 == 0 && year % 100 != 0) || year % 400 == 0`
+
+- 1900 能被 100 整除、不能被 400 整除，不是闰年。
+- 2000 能被 400 整除，是闰年。
+- 2023 不能被 4 整除，不是闰年。
+- 2024 能被 4 整除、不能被 100 整除，是闰年。
+- 0 不符合本题的正整数年份约定，应输出年份无效。
+
+注意相等比较是 `==`，不要把 `year % 4 == 0` 写成赋值形式。
+
+</details>
+
+### 9.3 对应示例与源码
+
+完整可运行代码位于 [java-study-basic 仓库](https://github.com/coder-sunshine/java-study-basic)。本文示例使用独立类，部分名称或说明做了调整，便于直接阅读；主要知识与仓库第二章对应。
+
+| 内容                                     | 仓库位置                                                                                                             |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 输入、运算、转换、比较、分支与计算器示例 | [第二章 examples](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter02branch/examples)   |
+| 奇偶、成绩等级、工作日与计算器练习骨架   | [第二章 exercises](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter02branch/exercises) |
+| 配套题目说明                             | [第二章练习文档](https://github.com/coder-sunshine/java-study-basic/blob/main/exercises/chapter02.md)                |
+| 尝试后用于对照的参考答案                 | [第二章 solutions](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter02branch/solutions) |
+
+可以按 `ScannerInputDemo` → `ArithmeticOperatorDemo` → `TypeConversionDemo` → `ComparisonLogicalDemo` → `IfElseDemo` → `GradeDemo` → `SwitchDemo` → `CalculatorDemo` 的顺序阅读仓库示例。选读的三元运算符、箭头 switch 和闰年题属于本文补充，不要求仓库中存在同名示例。
