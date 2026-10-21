@@ -1,0 +1,997 @@
+---
+title: 第四章：方法与任务拆分
+description: 基于 JDK 17 学习方法定义与调用、参数、返回值、作用域、值传递和重载，用方法拆分成绩判断与循环计算器。
+sidebar:
+  label: 第四章：方法与任务拆分
+  order: 4
+---
+
+前三章已经能完成输入、计算、判断和循环。随着程序变长，如果所有逻辑都写在 main 中，就容易出现重复代码，也不方便单独检查某一个计算或判断。
+
+本章学习把任务拆成方法：用参数接收数据，用返回值提供结果，再由调用方组合这些方法。继续使用 **JDK 17**，标记为 `java` 的代码块都是完整程序，文件名与公开类名一致即可运行；放入现有项目时保留相应包声明。
+
+本章辅助方法统一使用 `public static`，暂不引入实例成员、数组操作、集合、递归或异常捕获。输入符合读取类型，小数使用普通有限数字，菜单程序最终输入 0 退出。
+
+## 1. 为什么要使用方法
+
+### 1.1 给一段任务起名字
+
+方法可以封装一段有明确用途的代码。例如，把输出分隔线命名为 `printSeparator`，把计算总和命名为 `add`，把检查成绩范围命名为 `isValidScore`。
+
+调用方法时，不必每次重新写一遍内部代码。需要修改同一项处理逻辑时，也可以集中修改它的实现。
+
+方法的价值不只在于减少重复。即使某段逻辑当前只调用一次，也可以通过合理命名，让读取整个程序的人先看清主要步骤，再查看细节。
+
+### 1.2 区分计算、判断、输入与输出
+
+| 任务     | 方法的典型职责             | 示例                        |
+| -------- | -------------------------- | --------------------------- |
+| 计算     | 接收数据，返回计算结果     | add、calculateAverage       |
+| 判断     | 接收数据，返回 boolean     | isValidScore、isValidChoice |
+| 输出     | 把已有信息显示出来         | printMenu、printGrade       |
+| 流程组织 | 安排输入、判断、调用与循环 | 本章的 main                 |
+
+这些是当前程序的分工方式，不是“所有项目都必须让 main 读取输入”的固定规则。先让每个方法的输入、结果和职责清楚，再根据程序规模调整。
+
+## 2. 方法定义与调用
+
+### 2.1 第一个无参数、无返回值方法
+
+```java
+public class MethodDefinitionDemo {
+    public static void main(String[] args) {
+        System.out.println("程序开始。");
+        printSeparator();
+        System.out.println("今天学习：方法。");
+        printSeparator();
+        System.out.println("程序结束。");
+    }
+
+    // 定义在类内，与 main 并列，不放进 main 的花括号中。
+    public static void printSeparator() {
+        System.out.println("--------------------");
+    }
+}
+```
+
+运行结果：
+
+```text
+程序开始。
+--------------------
+今天学习：方法。
+--------------------
+程序结束。
+```
+
+`printSeparator` 定义了一次，却被调用两次。只修改它内部的分隔线，两次调用的输出都会使用新写法。
+
+### 2.2 看懂方法的组成
+
+以上面的 `public static void printSeparator()` 为例：
+
+| 部分             | 本章理解方式                                      |
+| ---------------- | ------------------------------------------------- |
+| `public`         | 访问修饰符，当前统一使用；访问控制后续展开        |
+| `static`         | 静态方法，本章可以直接从同类的 static main 中调用 |
+| `void`           | 不向调用方返回一个值                              |
+| `printSeparator` | 方法名，使用小驼峰，表达用途                      |
+| `()`             | 参数列表为空，不需要传入数据                      |
+| `{ ... }`        | 方法体，包含这次调用要执行的代码                  |
+
+方法不必都写成 public static；这是本章为了专注学习方法调用采用的形式。实例方法与 static 的区别，在面向对象章节展开。
+
+### 2.3 定义不等于执行
+
+写出方法定义，是描述它将来被调用时做什么。在 main 中执行 `printSeparator();`，才会运行这个辅助方法的方法体。
+
+调用后，方法执行到结尾或 return 时，本次调用结束，程序回到调用位置继续执行。上例第一次打印分隔线后，会继续输出“今天学习：方法。”。
+
+辅助方法可以写在 main 前面或后面，源码排列顺序不决定调用先后。main 是由 Java 启动机制进入的入口，不需要我们在这个类里再次手动调用 main。
+
+### 2.4 无参数也可以返回值
+
+“有没有参数”与“有没有返回值”是两个独立问题。无参数方法也可以返回一个固定值或计算结果。
+
+```java
+public class NoParameterReturnDemo {
+    public static void main(String[] args) {
+        int score = getDefaultScore();
+        System.out.println("默认成绩：" + score);
+    }
+
+    public static int getDefaultScore() {
+        // 返回一个 int 值，本次调用不需要参数。
+        return 85;
+    }
+}
+```
+
+运行结果：
+
+```text
+默认成绩：85
+```
+
+| 参数 | 返回值 | 本章示例                      |
+| ---- | ------ | ----------------------------- |
+| 无   | 无     | printSeparator()              |
+| 有   | 无     | printStudentInfo(String, int) |
+| 无   | 有     | getDefaultScore()             |
+| 有   | 有     | add(int, int)                 |
+
+表格中的写法用于概括参数类型和方法用途，并不是完整的方法定义。
+
+## 3. 参数：把数据交给方法
+
+### 3.1 形参与实参
+
+方法定义中声明的参数叫**形参**，调用时提供的具体数据叫**实参**。
+
+```java
+public class ParameterDemo {
+    public static void main(String[] args) {
+        // 实参可以是直接写出的值。
+        printStudentInfo("小林", 19);
+
+        // 实参也可以来自变量。
+        String studentName = "小夏";
+        int studentAge = 20;
+        printStudentInfo(studentName, studentAge);
+
+        // 表达式先计算，再将结果传入。
+        printStudentInfo("小周", 18 + 1);
+    }
+
+    public static void printStudentInfo(String studentName, int age) {
+        System.out.println("姓名：" + studentName);
+        System.out.println("年龄：" + age);
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林
+年龄：19
+姓名：小夏
+年龄：20
+姓名：小周
+年龄：19
+```
+
+第一轮调用时，形参 studentName 接收到“小林”，age 接收到 19。下一次调用会接收下一组数据，不会自动沿用上次的年龄。
+
+### 3.2 参数按位置对应
+
+`printStudentInfo(String studentName, int age)` 要求两个参数，第一个是 String，第二个是 int。
+
+调用 `printStudentInfo(19, "小林")` 把顺序反过来了，不能编译。少传一个、多传一个，或传入不兼容的类型，也不能直接匹配这个方法。
+
+调用方的变量名不必与形参相同，例如 studentAge 可以传给形参 age。Java 按位置传入数据，不按变量名匹配。
+
+### 3.3 参数类型与自动转换
+
+参数要满足方法声明的类型要求，但不代表实参类型必须逐字完全相同。例如，int 值可以自动转换后传给 double 形参；double 值则不能直接传给 int 形参。
+
+不要为了消除调用报错就随意强制转换。先判断参数含义和数据类型是否合理，避免把本来有意义的小数截掉。
+
+## 4. 返回值：把结果交回调用方
+
+### 4.1 通过 return 返回计算结果
+
+有返回值的方法，在方法名前声明返回类型，并使用 `return 表达式;` 返回一个兼容类型的值。
+
+```java
+public class ReturnValueDemo {
+    public static void main(String[] args) {
+        int chineseScore = 78;
+        int mathScore = 91;
+
+        int totalScore = add(chineseScore, mathScore);
+        double averageScore = calculateAverage(chineseScore, mathScore);
+        System.out.println("总分：" + totalScore);
+        System.out.println("平均分：" + averageScore);
+
+        // 返回结果也可以作为下一次调用的实参。
+        int adjustedScore = add(totalScore, 5);
+        System.out.println("加分后的总分：" + adjustedScore);
+    }
+
+    public static int add(int firstNumber, int secondNumber) {
+        return firstNumber + secondNumber;
+    }
+
+    public static double calculateAverage(int firstScore, int secondScore) {
+        // 在加法之前转换，避免先进行可能溢出的 int 加法。
+        return ((double) firstScore + secondScore) / 2;
+    }
+}
+```
+
+运行结果：
+
+```text
+总分：169
+平均分：84.5
+加分后的总分：174
+```
+
+`int totalScore = add(chineseScore, mathScore);` 会先把实参传给 add，执行方法得到 169，再用这个结果初始化 main 中的 totalScore。
+
+add 使用 int 加法，约定结果不超出 int 范围；声明成方法不会自动避免整数溢出。calculateAverage 在相加前转换为 double，也使后面的除法成为浮点除法。
+
+### 4.2 返回结果与打印结果不同
+
+println 把内容显示在控制台；return 把一个值交回调用方，并结束本次方法调用。两者不能互相代替。
+
+```java
+public class PrintReturnDemo {
+    public static void main(String[] args) {
+        printSum(2, 3);
+
+        int result = add(2, 3);
+        System.out.println("接收到的和：" + result);
+        System.out.println("接收后再加 10：" + (result + 10));
+
+        // 这个方法只计算并返回，没有打印；忽略结果就没有可见输出。
+        add(10, 20);
+    }
+
+    public static void printSum(int firstNumber, int secondNumber) {
+        System.out.println("打印的和：" + (firstNumber + secondNumber));
+    }
+
+    public static int add(int firstNumber, int secondNumber) {
+        return firstNumber + secondNumber;
+    }
+}
+```
+
+运行结果：
+
+```text
+打印的和：5
+接收到的和：5
+接收后再加 10：15
+```
+
+调用 `printSum(2, 3)` 可以看到文字，但它是 void 方法，不能写成 `int result = printSum(2, 3);`。调用 add 后得到的数字则可以继续计算、比较，也可以选择输出。
+
+有返回值的方法仍然会执行方法体，即使调用方没有保存返回值。上例最后一次 add 的结果被忽略了，不等于这次调用没有发生。
+
+### 4.3 返回路径需要完整
+
+对于声明为非 void 的方法，每条可能正常结束的路径都需要返回一个兼容类型的值。例如，返回较大值的方法需要覆盖“两数第一大”和“第二大或相等”等情况，不能只在一个 if 分支里 return，其他情况直接走到方法末尾。
+
+声明为 int，就不能返回一个 String；声明为 void，就不能使用 `return 5;`。void 表示没有返回值，不是返回数字 0、空字符串或 null。
+
+### 4.4 return 提前结束的是本次方法调用
+
+非 void 方法使用 `return 值;`，void 方法也可以使用不带值的 `return;` 提前结束。
+
+执行 return 后，当前这次方法调用不再向下执行，但调用方可能还有后续语句。辅助方法中的 return 不会自动结束 main 的循环，也不会自动结束整个程序。
+
+第 8 节的成绩报告会用 `return;` 跳过无效成绩的输出；循环计算器会用它结束一次失败的除法处理，然后回到主菜单。
+
+## 5. 返回 boolean 的判断方法
+
+### 5.1 用方法名表达条件
+
+比较表达式本身就会得到 boolean，可以直接返回，不必为了返回 true 或 false 再写一套 if-else。
+
+```java
+public class BooleanReturnDemo {
+    public static void main(String[] args) {
+        int score = 85;
+        System.out.println("85 分是否合法：" + isValidScore(score));
+        System.out.println("85 分是否及格：" + isPassingScore(score));
+        System.out.println("101 分是否合法：" + isValidScore(101));
+        System.out.println("101 分是否及格：" + isPassingScore(101));
+
+        if (isPassingScore(score)) {
+            System.out.println("本次成绩及格。");
+        }
+    }
+
+    public static boolean isValidScore(int score) {
+        return score >= 0 && score <= 100;
+    }
+
+    public static boolean isPassingScore(int score) {
+        // 既要求成绩有效，也要求达到及格线。
+        return isValidScore(score) && score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+85 分是否合法：true
+85 分是否及格：true
+101 分是否合法：false
+101 分是否及格：false
+本次成绩及格。
+```
+
+### 5.2 判断方法也可以调用其他方法
+
+`isPassingScore` 内调用 `isValidScore`，先保证范围正确，再判断是否达到 60。否则仅用 `score >= 60`，会把 101 这样的无效成绩也当成及格。
+
+`if (isPassingScore(score))` 使用的是返回的布尔值，不需要再写 `== true`。要判断不合法，可以使用 `!isValidScore(score)`。
+
+用 -1、0、59、60、100、101 验证，注意“是否合法”和“是否为及格的有效成绩”不是同一个判断。
+
+## 6. 作用域与值传递
+
+### 6.1 方法里的局部变量各自独立
+
+在方法中声明的局部变量，只能在自己的作用域中使用。main 里的变量不能因为名字熟悉，就被另一个方法直接读取。
+
+需要把数据交给另一个方法时，使用参数；需要把计算结果带回来时，使用返回值。不同方法可以使用相同的局部变量名，但它们不是同一个变量。
+
+### 6.2 基本类型参数接收值的副本
+
+```java
+public class ScopeDemo {
+    public static void main(String[] args) {
+        int number = 10;
+        System.out.println("调用前，main 中的 number：" + number);
+        changeNumber(number);
+        System.out.println("调用后，main 中的 number：" + number);
+
+        for (int round = 1; round <= 2; round++) {
+            int bonus = round * 10;
+            System.out.println("本轮奖励：" + bonus);
+        }
+    }
+
+    public static void changeNumber(int number) {
+        // 形参获得整数值的副本，与 main 中的变量独立。
+        System.out.println("方法接收到的 number：" + number);
+        number = 99;
+        System.out.println("方法内部修改后的 number：" + number);
+    }
+}
+```
+
+运行结果：
+
+```text
+调用前，main 中的 number：10
+方法接收到的 number：10
+方法内部修改后的 number：99
+调用后，main 中的 number：10
+本轮奖励：10
+本轮奖励：20
+```
+
+| 时刻           | main 中的 number | changeNumber 的形参 number |
+| -------------- | ---------------- | -------------------------- |
+| 调用之前       | 10               | 尚未进入方法               |
+| 刚进入方法     | 10               | 10                         |
+| 形参被重新赋值 | 10               | 99                         |
+| 本次调用结束   | 10               | 本次调用的局部作用域结束   |
+
+**Java 始终是值传递。** 本章用 int 演示：传入的是整数值的副本，给形参重新赋值不会修改调用方的 int 变量。引用类型参数的表现将在面向对象章节继续学习，不能据此把 Java 分成“基本类型值传递、对象引用传递”两套机制。
+
+### 6.3 要更新调用方变量，就接收返回值
+
+```java
+public class ValueUpdateDemo {
+    public static void main(String[] args) {
+        int count = 5;
+
+        // 方法会计算并返回 6，但调用方没有保存它。
+        increaseByOne(count);
+        System.out.println("忽略返回值后：" + count);
+
+        count = increaseByOne(count);
+        System.out.println("重新赋值后：" + count);
+    }
+
+    public static int increaseByOne(int number) {
+        return number + 1;
+    }
+}
+```
+
+运行结果：
+
+```text
+忽略返回值后：5
+重新赋值后：6
+```
+
+第二次调用先返回 6，再由 main 执行赋值，把自己的 count 更新成 6。这个例子使用正常范围的小整数，不依赖 int 溢出行为。
+
+### 6.4 花括号与局部作用域
+
+ScopeDemo 的 round 声明在 for 中，bonus 声明在循环体中，它们都不能在循环结束后直接使用。bonus 每轮重新声明初始化，用于保存本轮结果，这是合理的。
+
+同一方法中，也不能在局部变量作用域重叠时再次声明同名局部变量。不同方法中的同名局部变量可以独立存在，不表示在同一个 main 的内层花括号中也能随意重复声明。
+
+## 7. 方法重载
+
+### 7.1 同名方法，参数列表不同
+
+同一个类里，可以定义多个同名方法，只要参数列表能区分它们，例如参数个数不同、参数类型不同，或者参数类型的排列顺序不同。
+
+```java
+public class OverloadDemo {
+    public static void main(String[] args) {
+        System.out.println("两个整数相加：" + add(2, 3));
+        System.out.println("三个整数相加：" + add(2, 3, 4));
+        System.out.println("两个小数相加：" + add(2.0, 3.5));
+        System.out.println("混合实参相加：" + add(2, 3.5));
+
+        // 先根据实参选中 int 版本，再把结果转换为 double 保存。
+        double result = add(2, 3);
+        System.out.println("整数重载结果存入 double：" + result);
+    }
+
+    public static int add(int firstNumber, int secondNumber) {
+        return firstNumber + secondNumber;
+    }
+
+    public static int add(int firstNumber, int secondNumber, int thirdNumber) {
+        return firstNumber + secondNumber + thirdNumber;
+    }
+
+    public static double add(double firstNumber, double secondNumber) {
+        return firstNumber + secondNumber;
+    }
+}
+```
+
+运行结果：
+
+```text
+两个整数相加：5
+三个整数相加：9
+两个小数相加：5.5
+混合实参相加：5.5
+整数重载结果存入 double：5.0
+```
+
+### 7.2 调用时选择哪一个版本
+
+| 调用            | 本例匹配的方法                        |
+| --------------- | ------------------------------------- |
+| `add(2, 3)`     | 两个 int 参数                         |
+| `add(2, 3, 4)`  | 三个 int 参数                         |
+| `add(2.0, 3.5)` | 两个 double 参数                      |
+| `add(2, 3.5)`   | 两个 double 参数，2 自动转换为 double |
+
+编译器根据调用处的实参类型等规则选择合适的重载。上例 `double result = add(2, 3);` 不会因为左边是 double 就改选 double 版本。
+
+先使用这样能明确区分的重载。不要为了展示技巧，同时堆叠许多容易产生歧义的参数组合。
+
+### 7.3 哪些变化不能构成重载
+
+对本章这些普通方法，可以用“方法名 + 按顺序排列的参数类型”理解用于区分重载的方法签名。返回类型和参数名不能单独区分两个方法。
+
+例如，已经有 `int add(int first, int second)` 时，再定义 `double add(int first, int second)`，只修改返回类型，属于重复定义；把参数名换成 a、b，也仍然是同一组参数类型。
+
+`calculateArea(int width, int height)` 与 `calculateArea(int height, int width)` 同样不能构成重载，因为两个参数的类型顺序都是 int、int。
+
+## 8. 把方法组合成完整程序
+
+### 8.1 成绩报告：校验、分类与输出
+
+将原来的成绩判断拆成三个职责：isValidScore 判断范围，getGrade 返回等级文字，printGrade 决定如何显示报告。
+
+```java
+import java.util.Scanner;
+
+public class MethodCompositionDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入整数成绩（0～100）：");
+        int score = scanner.nextInt();
+        scanner.close();
+
+        printGrade(score);
+    }
+
+    public static boolean isValidScore(int score) {
+        return score >= 0 && score <= 100;
+    }
+
+    public static String getGrade(int score) {
+        // 单独调用这个分类方法时，也能正确处理范围错误。
+        if (!isValidScore(score)) {
+            return "无效";
+        }
+        if (score >= 90) {
+            return "优秀";
+        }
+        if (score >= 80) {
+            return "良好";
+        }
+        if (score >= 70) {
+            return "中等";
+        }
+        if (score >= 60) {
+            return "及格";
+        }
+        return "不及格";
+    }
+
+    public static void printGrade(int score) {
+        if (!isValidScore(score)) {
+            System.out.println("成绩无效，请输入 0～100 的整数。");
+            // 结束本次输出方法，不再打印成绩和等级。
+            return;
+        }
+        System.out.println("成绩：" + score);
+        System.out.println("等级：" + getGrade(score));
+    }
+}
+```
+
+输入：
+
+```text
+90
+```
+
+程序输出：
+
+```text
+请输入整数成绩（0～100）：
+成绩：90
+等级：优秀
+```
+
+输入 101 时，只会在输入提示后输出“成绩无效，请输入 0～100 的整数。”，不输出等级。本文将输入与程序输出分别列出，实际控制台中键入的数据会出现在提示之后。
+
+getGrade 中可以使用连续的独立 if，因为每个匹配分支都会立即 return，后面的代码不再执行。这与第二章“多条独立 if 分别打印，可能得到多个等级”的行为不同。
+
+printGrade 校验后决定是否显示报告，getGrade 自身也校验，保证单独调用时不把 101 分类成优秀。保留哪些校验，应根据各方法的调用约定判断，而不是一律删除或一律重复。
+
+### 8.2 返回两个整数中的较大值
+
+```java
+import java.util.Scanner;
+
+public class MaxNumberDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入第一个整数：");
+        int firstNumber = scanner.nextInt();
+        System.out.println("请输入第二个整数：");
+        int secondNumber = scanner.nextInt();
+        scanner.close();
+
+        int result = max(firstNumber, secondNumber);
+        System.out.println("较大值：" + result);
+    }
+
+    public static int max(int firstNumber, int secondNumber) {
+        if (firstNumber >= secondNumber) {
+            return firstNumber;
+        }
+        return secondNumber;
+    }
+}
+```
+
+输入：
+
+```text
+3
+8
+```
+
+程序输出：
+
+```text
+请输入第一个整数：
+请输入第二个整数：
+较大值：8
+```
+
+相等时返回其中一个即可。直接比较两个数，不要通过相减后的正负判断大小，以免两个合法 int 相减时发生溢出。
+
+### 8.3 将区间求和拆成判断与计算方法
+
+isValidLimit 返回范围是否正确；sumTo 只负责循环求和；main 先校验，再决定调用计算方法还是输出错误提示。
+
+```java
+import java.util.Scanner;
+
+public class RangeSumMethodDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入上限 n（1～10000）：");
+        int limit = scanner.nextInt();
+        scanner.close();
+
+        if (isValidLimit(limit)) {
+            System.out.println("总和：" + sumTo(limit));
+        } else {
+            System.out.println("上限无效，请输入 1～10000 的整数。");
+        }
+    }
+
+    public static boolean isValidLimit(int limit) {
+        return limit >= 1 && limit <= 10000;
+    }
+
+    // 调用约定：limit 已通过校验，处于 1～10000。
+    public static int sumTo(int limit) {
+        int sum = 0;
+        for (int number = 1; number <= limit; number++) {
+            sum += number;
+        }
+        return sum;
+    }
+}
+```
+
+输入：
+
+```text
+5
+```
+
+程序输出：
+
+```text
+请输入上限 n（1～10000）：
+总和：15
+```
+
+调用约定是方法使用者需要满足的前提，不是写成注释后 Java 就会自动检查。这里 sumTo 不负责处理无效上限，由调用方先调用 isValidLimit 保证前提成立。
+
+上限为 1 时结果是 1，为 10000 时结果是 50005000，仍在 int 范围内。无效上限不会进入 sumTo；不要用一个随意返回的 0 来同时表示“结果为零”和“调用失败”。
+
+### 8.4 重载计算面积
+
+用同一个名字表达面积计算，再通过参数区分正方形、整数边长长方形和小数边长长方形。
+
+```java
+public class AreaOverloadDemo {
+    public static void main(String[] args) {
+        int side = 5;
+        int width = 4;
+        int height = 6;
+        double decimalWidth = 1.5;
+        double decimalHeight = 2.0;
+
+        System.out.println("正方形面积：" + calculateArea(side));
+        System.out.println("整数长方形面积：" + calculateArea(width, height));
+        System.out.println("小数长方形面积：" + calculateArea(decimalWidth, decimalHeight));
+    }
+
+    public static int calculateArea(int side) {
+        return side * side;
+    }
+
+    public static int calculateArea(int width, int height) {
+        return width * height;
+    }
+
+    public static double calculateArea(double width, double height) {
+        return width * height;
+    }
+}
+```
+
+运行结果：
+
+```text
+正方形面积：25
+整数长方形面积：24
+小数长方形面积：3.0
+```
+
+本例约定各边长采用相同单位，数值均在 1～100，不要求校验。`calculateArea(2, 3.5)` 会使用两个 double 参数的版本，2 先自动转换为 double。
+
+重载应该表达相近的任务，不是只要参数能区分，就把毫不相关的操作都起成同一个名字。
+
+### 8.5 循环计算器的方法分工
+
+将第二章的四则运算和第三章的循环菜单结合，再把显示、判断与计算拆开。
+
+| 方法                            | 职责                                               |
+| ------------------------------- | -------------------------------------------------- |
+| main                            | 创建和关闭唯一的 Scanner，读取输入，组织循环和退出 |
+| printMenu                       | 只显示菜单                                         |
+| isValidChoice                   | 判断是否为 1～4 的运算编号                         |
+| add、subtract、multiply、divide | 接收两个数，返回计算结果，不打印                   |
+| printCalculation                | 选择计算方法，检查除零，输出结果或提示             |
+
+0 是退出编号，不是一个合法的运算编号，因此由 main 在调用 isValidChoice 之前单独处理。无效编号直接重选，不读取操作数。
+
+### 8.6 循环计算器的完整实现
+
+```java
+import java.util.Scanner;
+
+public class CalculatorRefactorDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            printMenu();
+            int choice = scanner.nextInt();
+            if (choice == 0) {
+                System.out.println("程序结束。");
+                break;
+            }
+            if (!isValidChoice(choice)) {
+                System.out.println("编号无效，请重新选择。");
+                continue;
+            }
+
+            System.out.println("请输入第一个数：");
+            double firstNumber = scanner.nextDouble();
+            System.out.println("请输入第二个数：");
+            double secondNumber = scanner.nextDouble();
+            printCalculation(choice, firstNumber, secondNumber);
+        }
+        scanner.close();
+    }
+
+    public static void printMenu() {
+        System.out.println("1. 加法");
+        System.out.println("2. 减法");
+        System.out.println("3. 乘法");
+        System.out.println("4. 除法");
+        System.out.println("0. 退出");
+        System.out.println("请输入菜单编号：");
+    }
+
+    public static boolean isValidChoice(int choice) {
+        return choice >= 1 && choice <= 4;
+    }
+
+    public static double add(double firstNumber, double secondNumber) {
+        return firstNumber + secondNumber;
+    }
+
+    public static double subtract(double firstNumber, double secondNumber) {
+        return firstNumber - secondNumber;
+    }
+
+    public static double multiply(double firstNumber, double secondNumber) {
+        return firstNumber * secondNumber;
+    }
+
+    // 调用约定：secondNumber 非零，由输出方法在调用前检查。
+    public static double divide(double firstNumber, double secondNumber) {
+        return firstNumber / secondNumber;
+    }
+
+    public static void printCalculation(int choice, double firstNumber, double secondNumber) {
+        switch (choice) {
+            case 1:
+                System.out.println("结果：" + add(firstNumber, secondNumber));
+                break;
+            case 2:
+                System.out.println("结果：" + subtract(firstNumber, secondNumber));
+                break;
+            case 3:
+                System.out.println("结果：" + multiply(firstNumber, secondNumber));
+                break;
+            case 4:
+                if (secondNumber == 0) {
+                    System.out.println("除数不能为 0。");
+                    return;
+                }
+                System.out.println("结果：" + divide(firstNumber, secondNumber));
+                break;
+            default:
+                System.out.println("编号无效，请重新选择。");
+                break;
+        }
+    }
+}
+```
+
+输入：
+
+```text
+4
+7
+0
+1
+2
+3
+0
+```
+
+程序输出：
+
+```text
+1. 加法
+2. 减法
+3. 乘法
+4. 除法
+0. 退出
+请输入菜单编号：
+请输入第一个数：
+请输入第二个数：
+除数不能为 0。
+1. 加法
+2. 减法
+3. 乘法
+4. 除法
+0. 退出
+请输入菜单编号：
+请输入第一个数：
+请输入第二个数：
+结果：5.0
+1. 加法
+2. 减法
+3. 乘法
+4. 除法
+0. 退出
+请输入菜单编号：
+程序结束。
+```
+
+除数为 0 时，printCalculation 通过 return 结束本次调用，main 的 while 随后进入下一轮，因此还能继续完成加法。这里的零检查也能识别 `-0.0`。
+
+divide 的使用前提是除数非零，单独调用它时也要满足这个前提。当前不在计算方法中用返回 0 伪装除法失败，也不引入异常处理。
+
+### 8.7 追踪调用与返回的位置
+
+以除法菜单为例：
+
+```text
+main：显示菜单，读取编号和两个操作数
+  ↓ 调用
+printCalculation：选择除法分支，检查除数
+  ├─ 除数为零：输出提示，return 回到 main
+  └─ 除数非零：调用 divide
+                    ↓ 返回商
+               输出结果，结束本次方法调用
+  ↓
+main：继续下一轮菜单
+```
+
+| 语句所在位置                        | 结束的范围                         |
+| ----------------------------------- | ---------------------------------- |
+| main 的退出分支中的 break           | main 中最近的 while                |
+| printCalculation 的 case 中的 break | 该方法里的 switch                  |
+| printCalculation 中的 return        | 这一次 printCalculation 调用       |
+| divide 中的 return                  | 这一次 divide 调用，并交回计算结果 |
+
+继续验证：输入 0 应直接退出；9、0 应提示一次编号错误且不读取操作数；1、1.5、2.5、0 应输出 4.0 后退出；4、7、2、0 应输出 3.5 后退出。
+
+## 9. 常见错误与排查
+
+### 9.1 把方法定义在 main 里面
+
+Java 不能在 main 的方法体里再定义普通方法。检查花括号：辅助方法位于类内、main 外，与 main 并列。
+
+如果连续多行标红，先检查是不是漏了 main 的右花括号，导致后面的方法被误放进 main。
+
+### 9.2 只写方法头，缺少方法体
+
+下面只描述一个方法的名称、参数和返回类型，还不是本章可编译的方法定义：
+
+```text
+public static int max(int firstNumber, int secondNumber)
+```
+
+在普通类中，本章这种 public static 方法还需要包含具体实现的方法体。不能简单在末尾补一个分号当作完整定义，否则仍会报缺少方法体等错误。
+
+文档中概括方法接口时可以列出这样的签名说明；真正放入 Java 源码时，应补全花括号与返回逻辑。第 8 节的 MaxNumberDemo 展示了完整写法。
+
+### 9.3 定义了方法却没有执行
+
+检查 main 或实际执行的方法是否调用了它。方法名之后的括号不能省略；不要以为把方法写在 main 下面，程序就会自动顺着文件内容执行进去。
+
+如果只是声明了 `int result = add(2, 3);`，但没有输出 result，控制台也不会自动显示它。
+
+### 9.4 参数个数、类型或顺序不匹配
+
+对照方法声明逐个检查：需要几个参数？每个位置表达什么？类型是否兼容？有没有传反顺序？
+
+参数名称不同不构成错误，但含义相同类型的参数如果传反，编译器可能无法发现。例如把“价格”和“数量”都定义成 int，仍要由自己确认实参含义。
+
+### 9.5 把输出当成返回，或漏掉返回路径
+
+错误方法片段：
+
+```text
+public static int add(int firstNumber, int secondNumber) {
+    System.out.println(firstNumber + secondNumber);
+}
+```
+
+这里声明要返回 int，却只有打印，没有返回值。应使用 return 交回结果，再由调用方决定输出或继续计算；不能只把输出正确当作方法已经实现正确。
+
+如果只在某个 if 内 return，也要检查其他正常结束的路径。相反，void 方法不能用于初始化一个需要值的变量。
+
+### 9.6 误以为形参会直接修改调用方变量
+
+main 中的 number 和 changeNumber 的形参即使同名，也各自独立。给 int 形参重新赋值，不会改变 main 的变量。
+
+需要更新时，让方法返回新值，再由调用方接收赋值；不要为了共享数据，绕过参数与返回值，把所有变量随意移成类成员。
+
+### 9.7 重载只改了返回类型或参数名
+
+重载需要参数列表的类型结构不同。只改返回类型、只改参数名，或仅交换两个相同类型参数的名字，都不能定义成新重载。
+
+重载与后续继承章节的重写是不同概念，本章只学习同类中的同名方法如何通过参数区分。
+
+### 9.8 static 调用方式不一致
+
+如果辅助方法漏写 static，而 main 仍直接按本章方式调用，可能出现不能从静态上下文引用非静态方法的提示。
+
+先对照本章示例保持一致，不必为了绕过错误临时引入尚未学习的对象创建。实例方法有自己的调用方式，面向对象章节再系统学习。
+
+### 9.9 方法拆分后无法继续输入
+
+检查是否在辅助方法里关闭了 Scanner，导致 main 下一轮无法读取输入。本章由 main 创建和关闭唯一的输入工具，计算与输出方法不负责关闭它。
+
+再检查是否把本来用于结束一次辅助调用的 return 写进 main，导致 main 本身直接返回。return 结束的是当前正在执行的方法，要结合所在位置理解。
+
+## 10. 本章小结与巩固
+
+### 10.1 核心知识回顾
+
+| 知识点       | 需要记住的内容                                    |
+| ------------ | ------------------------------------------------- |
+| 方法定义     | 位于类内，不能嵌套定义在 main 中                  |
+| 方法调用     | 定义描述处理逻辑，调用才执行辅助方法              |
+| 参数         | 形参接收实参的值，数量、顺序和类型需匹配          |
+| 返回值       | return 交回结果并结束本次调用，println 只负责输出 |
+| void         | 不返回一个值，也可以用 return 提前结束            |
+| boolean 方法 | 可以直接返回条件结果，用作 if 条件                |
+| 作用域       | 不跨方法直接读取局部变量，注意花括号范围          |
+| 值传递       | 修改基本类型形参，不会直接修改调用方变量          |
+| 重载         | 同名方法通过参数列表区分，不能只改返回类型        |
+| 任务拆分     | 通过清晰的输入、返回值和调用约定组合方法          |
+
+### 10.2 巩固练习
+
+**练习 1：返回较大值。** 定义返回 int 的 max 方法，读取两个整数，在 main 中调用并输出。验证 3、8；8、3；-5、-2；0、0；以及 int 最小值与最大值。方法内部不读取输入，也不打印。
+
+**练习 2：区间求和。** 定义 isValidLimit 与 sumTo，先验证 1～10000，再循环求和并返回结果。验证 1、5、10000 和范围外输入，非法时不调用求和方法。不用现成公式代替循环。
+
+**练习 3：面积重载。** 定义一个 int 参数、两个 int 参数、两个 double 参数的三个 calculateArea 方法。将数据改成边长 1、长宽 2 与 3、长宽 2.5 与 4.0，结果应分别为 1、6、10.0。
+
+**练习 4：拆分计算器。** 独立实现菜单、编号校验、四个运算方法与结果输出方法。验证直接退出、非法菜单、四则运算、除数为零后继续计算。main 管理输入工具与循环，计算方法不打印。
+
+**练习 5：解释调用。** 不运行程序，先回答：
+
+- int 形参在方法内改成 99，为什么 main 的同名变量仍可能是 10？
+- 忽略 increaseByOne 的返回值，与重新赋给原变量，有什么区别？
+- 为什么 `double result = add(2, 3)` 不会自动选中两个 double 形参的重载？
+- printCalculation 中执行 return 后，为什么还能再次显示菜单？
+
+<details>
+<summary>展开查看调用与返回的思考题答案</summary>
+
+- 形参得到整数值的副本，与 main 中的变量不是同一个变量。
+- 忽略返回值不会把新值保存到原变量；重新赋值才会更新调用方的变量。
+- 本例重载根据实参选择，两个 int 实参先匹配 int 版本，之后结果才转换为 double 保存。
+- return 结束本次 printCalculation 调用，控制流程回到 main；main 的循环没有因此结束。
+
+</details>
+
+**选做：返回有效成绩的平均分。** 定义一个 boolean 方法检查两门成绩是否都有效，再定义平均分计算方法，约定只接受有效成绩。main 先校验，合法才计算并输出；验证 0 与 100、78 与 91、-1 与 80、80 与 101。解释两个方法各自的调用约定。
+
+调试时，可以在 main 的方法调用处设置断点，用“步入”观察形参，再用“步出”回到调用方查看结果。先预测每一步的值，再执行核对。
+
+### 10.3 对应示例与源码
+
+完整可运行代码位于 [java-study-basic 仓库](https://github.com/coder-sunshine/java-study-basic)。本文部分示例为便于独立阅读增加了调用或拆成单独类，主要规则与仓库第四章对应。
+
+| 内容                                               | 仓库位置                                                                                                             |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| 定义、参数、返回值、布尔判断、作用域、重载与计算器 | [第四章 examples](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter04method/examples)   |
+| 较大值、区间求和、面积重载与计算器练习骨架         | [第四章 exercises](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter04method/exercises) |
+| 配套题目说明                                       | [第四章练习文档](https://github.com/coder-sunshine/java-study-basic/blob/main/exercises/chapter04.md)                |
+| 尝试后用于对照的参考答案                           | [第四章 solutions](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter04method/solutions) |
+
+仓库示例可以按 `MethodDefinitionDemo` → `ParameterDemo` → `ReturnValueDemo` → `BooleanReturnDemo` → `ScopeDemo` → `OverloadDemo` → `MethodCompositionDemo` → `CalculatorRefactorDemo` 的顺序阅读。
+
+下一章会学习数组：在已经能拆分处理步骤的基础上，继续学习如何组织和处理一组数据。
