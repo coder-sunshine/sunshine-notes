@@ -73,6 +73,10 @@ export default defineConfig({
           items: [
             { label: '概览', slug: 'backend' },
             {
+              label: 'Java',
+              autogenerate: { directory: 'backend/java' },
+            },
+            {
               label: 'Node.js',
               autogenerate: { directory: 'backend/node' },
             },

@@ -1,0 +1,927 @@
+---
+title: 第一章：认识 Java，写出第一个程序
+description: 基于 JDK 17，从第一个程序开始认识输出、注释、变量与数据类型，掌握简单计算并排查常见语法错误。
+sidebar:
+  label: 第一章：Java 入门
+  order: 1
+---
+
+本章使用 **JDK 17**，从输出一句话开始，逐步学习如何保存信息、修改数据和进行简单计算。示例使用固定数据；键盘输入、条件判断和完整的运算规则在后续章节展开。
+
+文中标记为 `java` 的代码块都是完整程序。运行时，新建与 `public class` 后名称一致的 `.java` 文件，复制代码，再运行 `main` 方法。标记为“错误写法”的代码只用于分析问题。
+
+## 1. 认识 Java
+
+### 1.1 Java 是什么
+
+Java 是一种编程语言。我们按照它的规则编写指令，让计算机完成计算、处理数据、输出信息等任务。
+
+例如，给出语文和数学成绩，程序就可以计算总分与平均分。以后还可以进一步处理一组学生的成绩、查询学生信息、把结果保存到文件。
+
+Java 常用于后端服务、企业应用和各种工具。本章先编写**控制台程序**：点击运行后，在 IDEA 的运行窗口中查看文字结果，不涉及图形界面或网页。
+
+### 1.2 JDK、JVM 与 Java 运行环境
+
+先区分三个经常出现的名称：
+
+| 名称 | 含义                                    | 当前需要理解的作用                                  |
+| ---- | --------------------------------------- | --------------------------------------------------- |
+| JDK  | Java Development Kit，Java 开发工具包   | 编写和运行 Java 程序所需的开发工具与运行环境        |
+| JVM  | Java Virtual Machine，Java 虚拟机       | 执行编译后的 Java 字节码                            |
+| JRE  | Java Runtime Environment，Java 运行环境 | 运行程序需要的 JVM 和相关类库等，不包含完整开发工具 |
+
+JDK 提供 `javac` 编译器、`java` 启动工具等。本章安装 **JDK 17** 即可，不需要再单独安装 JRE。现代 JDK 的目录布局与早期版本不同，不必寻找一个名为 `jre` 的子目录。
+
+IDEA 是帮助我们编辑、运行和调试代码的工具；JDK 提供实际编译和运行 Java 的能力，两者分工不同。
+
+### 1.3 从源代码到程序运行：.java 与 .class
+
+一个简单程序通常经历以下过程：
+
+```text
+编写 HelloWorldDemo.java
+          ↓ javac 编译
+生成 HelloWorldDemo.class（字节码）
+          ↓ 使用 java 启动，由 JVM 执行
+在控制台看到输出
+```
+
+`.java` 是我们阅读和修改的源代码；`.class` 是编译产物，不需要手动编辑。IDEA 的运行按钮会帮助我们完成编译和启动。
+
+Java 字节码可以在不同系统上由相应 JVM 执行，但仍需要兼容的 Java 版本；涉及系统路径或本地库时，也可能需要适配。本章统一使用 JDK 17 编译和运行。
+
+### 1.4 确认 JDK 17 与 IDEA 项目配置
+
+在终端分别执行：
+
+```sh
+java -version
+javac -version
+```
+
+检查两者的主版本号都为 **17**。发行商和补丁版本可以不同，例如版本号可能是 `17.0.12`。
+
+在 IDEA 中检查：
+
+1. 打开「文件 → 项目结构 → 项目」，将项目 SDK 设为 JDK 17，语言级别设为 17。
+2. 如果模块单独配置了 SDK，也设为 17，或者继承项目 SDK。
+3. 对于现有普通 Java 教学项目，确认 `src` 是 Sources Root（源代码根目录）。
+4. 打开带有 `main` 方法的类，点击旁边的运行按钮。
+
+**终端的 Java 版本与 IDEA 项目 SDK 是两处配置。** 修改其中一处，不代表另一处会自动切换。如果终端提示找不到 `java` 或 `javac`，先检查 JDK 是否安装，以及 `JAVA_HOME`、`PATH` 是否配置正确。
+
+## 2. 第一个 Java 程序
+
+### 2.1 HelloWorld 程序
+
+新建 `HelloWorldDemo.java`，写入下面的完整程序：
+
+```java
+public class HelloWorldDemo {
+    public static void main(String[] args) {
+        // 把文字输出到控制台。
+        System.out.println("Hello, Java!");
+        System.out.println("这是我的第一个 Java 程序。");
+    }
+}
+```
+
+运行结果：
+
+```text
+Hello, Java!
+这是我的第一个 Java 程序。
+```
+
+双引号中的内容是字符串。把 `Hello, Java!` 改成自己的名字后重新运行，输出也会改变。
+
+### 2.2 文件名与类名
+
+`public class HelloWorldDemo` 声明了一个公开的类，类名是 `HelloWorldDemo`。
+
+使用本章的文件组织方式时，**文件名必须与公开类名完全一致**：类名为 `HelloWorldDemo`，文件名就是 `HelloWorldDemo.java`，注意大小写。
+
+初学阶段，一个文件只放一个公开类。例如，要写个人信息程序，就可以新建 `PersonalInfoDemo.java`，里面声明 `public class PersonalInfoDemo`。
+
+### 2.3 package 与目录的对应关系
+
+前面的独立小程序没有写包声明。在现有教学仓库中，类使用包来组织，例如下面的文件位于：
+
+```text
+src/
+└── basic/
+    └── chapter01intro/
+        └── examples/
+            └── HelloWorldDemo.java
+```
+
+对应程序为：
+
+```java
+package basic.chapter01intro.examples;
+
+public class HelloWorldDemo {
+    public static void main(String[] args) {
+        // package 从源代码根目录 src 的下一层开始对应。
+        System.out.println("Hello, Java!");
+        System.out.println("这是我的第一个 Java 程序。");
+    }
+}
+```
+
+`package basic.chapter01intro.examples;` 表示当前类属于这个包。包声明位于类声明之前，包名中的点对应目录层级，**不包含 `src`**。
+
+在已有包中创建类时，保留 IDEA 自动生成的正确包声明。复制本文其他无包声明的示例到这个包时，也要保留文件原有的包声明。
+
+如果想从终端运行上面这个带包的程序，在教学仓库根目录执行：
+
+```sh
+mkdir -p out/chapter01
+javac -encoding UTF-8 --release 17 -d out/chapter01 src/basic/chapter01intro/examples/HelloWorldDemo.java
+java -cp out/chapter01 basic.chapter01intro.examples.HelloWorldDemo
+```
+
+`-d` 指定编译输出目录；`-cp` 指定查找类的位置。启动时使用包含包名的完整类名，不加 `.java` 或 `.class` 后缀。
+
+### 2.4 main 方法与程序入口
+
+在本章的程序中，`public static void main(String[] args)` 是启动入口。程序从它的花括号内部开始执行。
+
+目前先熟悉完整写法，特别注意 `main`、`String` 的大小写，以及 `String[] args` 中的方括号。`public`、`static`、`void`、参数与数组的含义，会在后续章节逐步展开。
+
+在本章的常规启动方式下，修改 `main` 的名称或签名后，即使文件能编译，也可能无法作为程序入口启动。
+
+### 2.5 花括号、分号与代码缩进
+
+第一个程序里，外层花括号表示类的范围，内层花括号表示 `main` 方法的范围。每一个左花括号都需要对应的右花括号。
+
+本章的变量声明、赋值和输出语句以英文分号 `;` 结束，例如 `int age = 19;`。**类和方法的右花括号后不需要加分号**，不要把“每行末尾都加分号”当成规则。
+
+缩进帮助我们看清包含关系：类中的方法缩进一级，方法中的语句再缩进一级。本文 Java 示例每级使用 4 个空格。缩进通常不决定 Java 的执行逻辑，实际范围由花括号决定。
+
+### 2.6 语句的执行顺序
+
+本章没有分支和循环，`main` 中的普通语句按从上到下的顺序执行。
+
+```java
+public class SequenceDemo {
+    public static void main(String[] args) {
+        // 输出顺序由语句顺序决定。
+        System.out.println("第一步：准备成绩");
+        System.out.println("第二步：计算总分");
+        System.out.println("第三步：输出结果");
+    }
+}
+```
+
+运行结果：
+
+```text
+第一步：准备成绩
+第二步：计算总分
+第三步：输出结果
+```
+
+这里输出的是步骤说明，还没有实际计算成绩。交换两条输出语句的位置，文字出现的顺序也会交换。
+
+## 3. 控制台输出
+
+### 3.1 println：输出并换行
+
+`System.out.println(...)` 会输出括号中的内容，然后换行。下一次输出从新的一行开始。
+
+例如，连续执行 `System.out.println("你好");` 和 `System.out.println("Java");`，控制台中就会分两行显示“你好”和“Java”。末尾是小写字母 `ln`，不要写成数字 `1`。
+
+### 3.2 print：输出但不换行
+
+`System.out.print(...)` 输出之后不会自动换行，因此后面的输出会接在同一行。
+
+下面的程序把 `print`、`println` 和空行放在一起观察：
+
+```java
+public class ConsoleOutputDemo {
+    public static void main(String[] args) {
+        // 两次输出接在同一行。
+        System.out.print("姓名：");
+        System.out.println("小林");
+
+        System.out.println("正在学习 Java。");
+        // 单独输出一次换行。
+        System.out.println();
+        System.out.println("今天的目标：独立运行程序。");
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林
+正在学习 Java。
+
+今天的目标：独立运行程序。
+```
+
+第一句 `print` 没有换行，第二句就把“小林”接在“姓名：”后面，然后才换行。
+
+### 3.3 输出空行
+
+没有参数的 `System.out.println();` 只输出换行。如果当前位置已经在一行的开头，再输出一次换行，就会留下一个空行，如上例所示。
+
+源代码中的空白行主要用于排版，**不会自动变成控制台中的空行**。
+
+### 3.4 输出文字与变量值
+
+`System.out.println("age");` 输出固定文字 `age`；`System.out.println(age);` 会读取名为 `age` 的变量，并输出它当前的值，前提是这个变量已声明并初始化。
+
+双引号内的内容按字符串处理，Java 不会自动把其中的变量名替换成变量值。变量将在第 5 节展开。
+
+## 4. 注释
+
+### 4.1 单行注释
+
+`//` 后面到当前行末尾的内容是单行注释。可以单独放一行，也可以写在一条语句后面。
+
+注释用于给阅读代码的人补充说明，不会作为程序指令执行，也不会自动输出到控制台。
+
+### 4.2 多行注释
+
+`/*` 与 `*/` 之间的内容是多行注释，可以跨越多行。
+
+```java
+public class CommentDemo {
+    public static void main(String[] args) {
+        // 这是单行注释。
+        System.out.println("开始学习注释。");
+
+        /*
+         * 这是多行注释。
+         * 中间的星号用于排版，不是必须的。
+         */
+        System.out.println("注释帮助我们理解代码。");
+
+        // System.out.println("这一行暂时不执行。");
+    }
+}
+```
+
+运行结果：
+
+```text
+开始学习注释。
+注释帮助我们理解代码。
+```
+
+最后一条输出已经被 `//` 注释掉，因此不会执行。多行注释不能直接嵌套另一组多行注释。
+
+### 4.3 注释的作用与使用习惯
+
+好的注释说明数据的含义或代码这样写的原因。例如，`// 身高的单位是米` 能补充有用信息；反复写“这里声明一个变量”通常帮助不大。
+
+实验时可以用注释暂时停用一条语句，再运行观察变化。正式保留的程序应尽量清楚简洁，不需要长期堆放大量废弃代码。
+
+## 5. 变量
+
+### 5.1 变量的作用
+
+变量让程序通过一个名字保存和使用数据，例如用 `age` 表示年龄、用 `studentName` 表示姓名。后面需要使用这份数据时，可以直接写变量名。
+
+变量有类型、名称和当前值。例如 `int age = 19;` 中，类型是 `int`，名称是 `age`，初始值是 `19`。
+
+### 5.2 声明、初始化与使用
+
+声明是创建一个具有指定类型和名称的变量；初始化是给它第一次赋值。两步可以写在一起，也可以分开。
+
+```java
+public class VariableDemo {
+    public static void main(String[] args) {
+        // 声明的同时初始化。
+        String studentName = "小林";
+
+        // 先声明，再初始化，最后读取。
+        int age;
+        age = 19;
+
+        System.out.println("姓名：" + studentName);
+        System.out.println("年龄：" + age);
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林
+年龄：19
+```
+
+`main` 内声明的这些变量属于局部变量，**读取之前必须先赋值**，不能认为它们会自动得到 `0` 或空字符串。对象属性的默认值是后续章节的另一条规则。
+
+输出中的 `+` 把提示文字和变量值拼接起来，第 7 节会详细说明。
+
+### 5.3 重新赋值
+
+变量声明之后，可以在类型允许的范围内更新值。重新赋值时只写变量名，不要再写类型。
+
+```java
+public class VariableUpdateDemo {
+    public static void main(String[] args) {
+        int age = 19;
+        System.out.println("修改前：" + age);
+
+        // 更新已有变量，不重新声明。
+        age = 20;
+        System.out.println("修改后：" + age);
+    }
+}
+```
+
+运行结果：
+
+```text
+修改前：19
+修改后：20
+```
+
+`age` 的类型仍是 `int`。能够修改值，不表示可以随意把它改成字符串或小数。
+
+### 5.4 赋值符号与变量值的变化
+
+`=` 表示赋值：先计算右边，再把结果赋给左边的变量。因此 `age = age + 1;` 表示读取旧值、加 1、再保存新值。
+
+```java
+public class AssignmentDemo {
+    public static void main(String[] args) {
+        int age = 19;
+        // 读取 age 的旧值 19，计算后把 20 赋给 age。
+        age = age + 1;
+        System.out.println("年龄：" + age);
+
+        int firstScore = 85;
+        // 把 firstScore 当前的整数值复制给 secondScore。
+        int secondScore = firstScore;
+        firstScore = 90;
+
+        System.out.println("第一份成绩：" + firstScore);
+        System.out.println("第二份成绩：" + secondScore);
+    }
+}
+```
+
+运行结果：
+
+```text
+年龄：20
+第一份成绩：90
+第二份成绩：85
+```
+
+第二份成绩得到的是赋值那一刻的整数值。它不会因为 `firstScore` 后来变化而自动更新；赋值也不会建立类似电子表格公式的持续关联。
+
+### 5.5 标识符规则、关键字与命名习惯
+
+标识符是变量名、类名、方法名等名称。当前使用英文命名时，先掌握以下规则：
+
+- 可以使用英文字母、数字、下划线 `_` 和美元符号 `$`，但不能以数字开头。
+- 不能包含空格或连字符 `-`。
+- 不能使用 `class`、`int`、`public` 等关键字，也不能使用 `true`、`false`、`null` 这些字面量作为名称。
+- 在 Java 17 中，单独一个 `_` 也不能用作标识符。
+
+Java 还允许部分 Unicode 字符作为标识符，例如中文；日常代码建议使用含义明确的英文名称，避免把“语法允许”与“命名推荐”混在一起。
+
+| 用途   | 推荐方式                     | 示例                                 |
+| ------ | ---------------------------- | ------------------------------------ |
+| 类名   | 大驼峰，单词首字母大写       | `HelloWorldDemo`、`PersonalInfoDemo` |
+| 变量名 | 小驼峰，第一个单词首字母小写 | `age`、`studentName`、`totalScore`   |
+| 包名   | 小写                         | `basic.chapter01intro.examples`      |
+
+例如，`studentName` 比 `a` 更容易理解；`2score`、`student-name`、`class` 都不能作为本章变量名。
+
+### 5.6 变量名区分大小写
+
+`age`、`Age` 和 `AGE` 是三个不同的名字。声明了 `age`，之后就必须按同样的拼写使用。
+
+虽然可以同时声明 `age` 和 `Age`，但这样很容易看错，不建议使用仅靠大小写区别的变量名。类似地，`String`、`System` 的首字母也不能随意改成小写。
+
+## 6. 数据类型
+
+### 6.1 基本类型与引用类型
+
+类型决定变量可以保存什么样的数据，以及能进行哪些操作。
+
+Java 有 **8 种基本类型**：`byte`、`short`、`int`、`long`、`float`、`double`、`char`、`boolean`。`String` 是引用类型，不是第 9 种基本类型。
+
+当前先掌握整数、小数、字符、状态、文字分别如何表示。引用、对象与内存的关系在类与对象章节展开。
+
+### 6.2 int：整数
+
+`int` 用于保存整数，例如 `int age = 19;`、`int score = 85;`。它不能直接保存 `19.5` 这样的数。
+
+`int` 的取值范围是 `-2147483648` 到 `2147483647`，适合本章的年龄、成绩和小范围计数。它有范围限制，不能用来表示任意大的整数。
+
+### 6.3 double：小数
+
+`double` 用于保存浮点数，例如 `double height = 1.65;`、`double averageScore = 87.5;`。普通小数字面量默认就是 `double` 类型。
+
+浮点数对很多十进制小数只能近似表示，因此 `double` 不是所有场景下的精确小数工具。本章用于身高和成绩平均分即可，金额精确计算以后再讨论。
+
+### 6.4 char：字符与单引号
+
+`char` 字面量使用英文单引号，例如 `char grade = 'A';`、`char symbol = '中';`。
+
+严格地说，`char` 保存一个 **UTF-16 代码单元**，占 16 位。常见英文字母和许多汉字可以用一个 `char` 表示，但部分字符（例如许多表情）需要两个代码单元，不能直接放进一个 `char`。
+
+当前先使用 `'A'` 这样的字符。单引号内不能直接放一串文字，`'AB'` 和空的 `''` 都不是合法的字符字面量。
+
+### 6.5 boolean：真与假
+
+`boolean` 只有两个值：`true` 和 `false`，例如 `boolean student = true;` 表示“是学生”。
+
+它不能使用 `1`、`0` 或带引号的 `"true"` 代替。`"true"` 是字符串，与布尔值 `true` 的类型不同。条件判断章节会继续使用布尔值。
+
+### 6.6 String：字符串与双引号
+
+`String` 用于表示文字，字符串字面量使用英文双引号，例如 `String studentName = "小林";`。
+
+字符串可以包含多个字符，也可以为空字符串 `""`。`"A"` 是字符串，`'A'` 是字符；看起来相近，但类型不同。
+
+如果字符串内部需要特殊符号，可以使用转义写法：
+
+| 写法 | 含义                             |
+| ---- | -------------------------------- |
+| `\"` | 字符串中的双引号                 |
+| `\\` | 一个反斜杠                       |
+| `\n` | 换行符                           |
+| `\t` | 制表符，具体显示间距取决于控制台 |
+
+例如，`String message = "她说：\"你好\"";` 保存的文字是 `她说："你好"`。使用 Windows 路径时，`"C:\\study"` 表示文字 `C:\study`；字符串里的反斜杠需要转义。
+
+下面把五种常用类型放在一个完整程序中：
+
+```java
+public class DataTypeDemo {
+    public static void main(String[] args) {
+        int age = 19;
+        double height = 1.65;
+        char grade = 'A';
+        boolean student = true;
+        String studentName = "小林";
+
+        // 输出时保留字段含义与单位。
+        System.out.println("姓名：" + studentName);
+        System.out.println("年龄：" + age);
+        System.out.println("身高（米）：" + height);
+        System.out.println("等级：" + grade);
+        System.out.println("是否为学生：" + student);
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林
+年龄：19
+身高（米）：1.65
+等级：A
+是否为学生：true
+```
+
+### 6.7 认识 byte、short、long 与 float
+
+另外四种基本类型也先认识一下：
+
+| 类型    | 类别   | 当前理解                             |
+| ------- | ------ | ------------------------------------ |
+| `byte`  | 整数   | 范围较小，取值为 -128～127           |
+| `short` | 整数   | 范围比 byte 大，取值为 -32768～32767 |
+| `long`  | 整数   | 范围比 int 大，用于更大的整数        |
+| `float` | 浮点数 | 与 double 相比，有效精度通常更低     |
+
+```java
+public class NumberTypeDemo {
+    public static void main(String[] args) {
+        byte smallNumber = 100;
+        short mediumNumber = 20000;
+        // 超过 int 范围的整数字面量使用 L 后缀。
+        long largeNumber = 3000000000L;
+        // 普通小数默认是 double，这里用 F 表示 float 字面量。
+        float temperature = 25.5F;
+
+        System.out.println("byte 示例：" + smallNumber);
+        System.out.println("short 示例：" + mediumNumber);
+        System.out.println("long 示例：" + largeNumber);
+        System.out.println("float 示例：" + temperature);
+    }
+}
+```
+
+运行结果：
+
+```text
+byte 示例：100
+short 示例：20000
+long 示例：3000000000
+float 示例：25.5
+```
+
+### 6.8 long 与 float 字面量的 L、F 后缀
+
+字面量是直接写在代码中的值，例如 `19`、`1.65`、`'A'`、`"小林"`。
+
+`3000000000L` 末尾的 `L` 表示这是一个 `long` 整数字面量。推荐大写 `L`，避免小写 `l` 与数字 `1` 混淆。如果直接写 `3000000000`，即使左边的变量是 `long`，这个无后缀的十进制整数字面量也会超出 `int` 范围，导致编译错误。
+
+`25.5F` 末尾的 `F` 表示这是一个 `float` 字面量。直接写 `float temperature = 25.5;` 会因右边默认是 `double` 而类型不匹配。当前普通小数优先使用 `double`，不需要给每个小数加后缀。
+
+### 6.9 根据数据选择类型
+
+先根据数据含义选择，再考虑范围和精度：
+
+| 数据                 | 本章建议类型 | 原因                                   |
+| -------------------- | ------------ | -------------------------------------- |
+| 年龄、单科成绩、人数 | `int`        | 当前都是范围不大的整数                 |
+| 身高、平均分         | `double`     | 可能包含小数                           |
+| A、B 等等级标记      | `char`       | 示例只需要一个常见字符                 |
+| 是否为学生           | `boolean`    | 只有是与否两种状态                     |
+| 姓名、学号、电话号码 | `String`     | 作为文字或标识使用，可能含字母或前导零 |
+
+电话号码虽然由数字组成，但通常不参与加减运算，也可能包含前导零或国家区号，因此适合用字符串保存。
+
+## 7. 简单计算与字符串拼接
+
+### 7.1 使用变量计算总分
+
+当 `+` 两侧都是本章使用的数字时，它进行加法运算。
+
+```java
+public class TotalScoreDemo {
+    public static void main(String[] args) {
+        int chineseScore = 85;
+        int mathScore = 90;
+        // 总分由原始成绩计算得到。
+        int totalScore = chineseScore + mathScore;
+
+        System.out.println(totalScore);
+    }
+}
+```
+
+运行结果：
+
+```text
+175
+```
+
+如果修改原始成绩后重新运行，程序会重新计算总分。不需要手动把计算结果改成另一个固定数字。
+
+### 7.2 整数除法与小数除法
+
+`/` 表示除法。**两个整数相除时，结果仍是整数，小数部分向零截去**。例如 `175 / 2` 得到 `87`，`-175 / 2` 得到 `-87`，不是四舍五入。
+
+把除数写成 `2.0` 后，会进行浮点除法：
+
+```java
+public class DivisionDemo {
+    public static void main(String[] args) {
+        // 两个 int 相除，小数部分不会保留。
+        System.out.println(175 / 2);
+        // 2.0 是 double 字面量，进行浮点除法。
+        System.out.println(175 / 2.0);
+    }
+}
+```
+
+运行结果：
+
+```text
+87
+87.5
+```
+
+### 7.3 使用 double 保存平均分
+
+保存结果的类型与右侧运算的规则，需要分别判断。
+
+```java
+public class AverageDemo {
+    public static void main(String[] args) {
+        int totalScore = 175;
+
+        // 先做整数除法得到 87，再转换为 double 保存。
+        double integerDivisionResult = totalScore / 2;
+        // 先做浮点除法，得到 87.5。
+        double averageScore = totalScore / 2.0;
+
+        System.out.println("整数除法后保存：" + integerDivisionResult);
+        System.out.println("平均分：" + averageScore);
+    }
+}
+```
+
+运行结果：
+
+```text
+整数除法后保存：87.0
+平均分：87.5
+```
+
+左边声明为 `double`，不会让右边已经发生的整数除法恢复小数。本章计算两门成绩的平均分时，使用 `totalScore / 2.0`。
+
+### 7.4 加号用于计算与字符串拼接
+
+当 `+` 的一侧是字符串时，这次操作会进行字符串拼接，把另一侧的值转换为文字后接起来。
+
+```java
+public class ConcatenationDemo {
+    public static void main(String[] args) {
+        // 加号按从左到右结合，先判断每一步的类型。
+        System.out.println(85 + 90);
+        System.out.println("总分：" + 85 + 90);
+        System.out.println(85 + 90 + "分");
+    }
+}
+```
+
+运行结果：
+
+```text
+175
+总分：8590
+175分
+```
+
+第二行先计算 `"总分：" + 85`，得到字符串 `"总分：85"`，然后再拼接 `90`。第三行先计算两个整数的和，再与字符串 `"分"` 拼接。
+
+### 7.5 使用括号控制计算顺序
+
+希望先算出总分，再与提示文字拼接时，可以使用括号明确计算范围。
+
+```java
+public class ParenthesesDemo {
+    public static void main(String[] args) {
+        int chineseScore = 85;
+        int mathScore = 90;
+
+        // 括号里的加法先得到数字结果。
+        System.out.println("总分：" + (chineseScore + mathScore));
+        System.out.println("平均分：" + ((chineseScore + mathScore) / 2.0));
+    }
+}
+```
+
+运行结果：
+
+```text
+总分：175
+平均分：87.5
+```
+
+较长的表达式可以拆成 `totalScore`、`averageScore` 等有名称的变量，让计算过程更容易阅读。乘除优先于加减，想让两门成绩先相加，就要用括号括起它们。
+
+## 8. 综合示例
+
+### 8.1 个人信息卡
+
+把姓名、年龄、身高、学生状态分别保存，再组合输出。
+
+```java
+public class PersonalInfoDemo {
+    public static void main(String[] args) {
+        String studentName = "小林";
+        int age = 19;
+        // 身高的单位是米。
+        double height = 1.65;
+        boolean student = true;
+
+        System.out.println("=== 个人信息卡 ===");
+        System.out.println("姓名：" + studentName);
+        System.out.println("年龄：" + age);
+        System.out.println("身高（米）：" + height);
+        System.out.println("是否为学生：" + student);
+    }
+}
+```
+
+运行结果：
+
+```text
+=== 个人信息卡 ===
+姓名：小林
+年龄：19
+身高（米）：1.65
+是否为学生：true
+```
+
+修改 `studentName` 的初始值后重新运行，姓名输出就会变化。提示文字“姓名：”保持固定，实际姓名从变量读取。
+
+### 8.2 修改变量并观察输出
+
+下面用已完成的练习数量表示进度，观察同一个变量在赋值前后的结果。
+
+```java
+public class ProgressDemo {
+    public static void main(String[] args) {
+        int completedExercises = 0;
+        System.out.println("修改前完成的练习数：" + completedExercises);
+
+        // 只声明一次，后面直接更新值。
+        completedExercises = 1;
+        System.out.println("修改后完成的练习数：" + completedExercises);
+    }
+}
+```
+
+运行结果：
+
+```text
+修改前完成的练习数：0
+修改后完成的练习数：1
+```
+
+每次输出读取的是执行到那一行时的变量值。第二次赋值不会改变之前已经输出到控制台的文字。
+
+### 8.3 两门成绩的总分与平均分
+
+将原始数据、计算过程和结果输出分开，便于检查。
+
+```java
+public class ScoreAverageDemo {
+    public static void main(String[] args) {
+        // 原始数据。
+        int chineseScore = 85;
+        int mathScore = 90;
+
+        // 根据原始数据计算，不直接写死结果。
+        int totalScore = chineseScore + mathScore;
+        double averageScore = totalScore / 2.0;
+
+        System.out.println("语文：" + chineseScore);
+        System.out.println("数学：" + mathScore);
+        System.out.println("总分：" + totalScore);
+        System.out.println("平均分：" + averageScore);
+    }
+}
+```
+
+运行结果：
+
+```text
+语文：85
+数学：90
+总分：175
+平均分：87.5
+```
+
+把语文改为 `81`、数学改为 `90`，保持公式不变再运行，总分应为 `171`，平均分应为 `85.5`。这说明程序在根据数据计算。
+
+## 9. 常见错误与排查
+
+下面的错误片段用于识别问题，不是可以直接运行的完整程序。编译器的提示文字可能因语言和版本配置而不同，先理解错误原因。
+
+### 9.1 缺少分号、引号或花括号
+
+错误写法，输出语句缺少分号：
+
+```text
+System.out.println("你好")
+```
+
+正确语句是 `System.out.println("你好");`。如果提示缺少 `;`，检查对应语句末尾；如果提示字符串未结束，检查双引号是否成对。
+
+花括号也需要成对匹配。可以点击 IDEA 中的花括号查看对应位置，确认方法和类都已正确结束。
+
+**先判断当前位置缺的是语句结束符，还是代码块。** 普通方法定义需要方法体，不能只因为提示中出现“需要 `{` 或 `;`”就直接补分号；这部分会在方法章节详细学习。
+
+### 9.2 中文标点导致的语法错误
+
+错误写法，使用了中文引号和分号：
+
+```text
+System.out.println(“你好”)；
+```
+
+正确语句仍是 `System.out.println("你好");`。语法使用的引号、括号、分号等要采用英文符号。
+
+字符串内部可以包含中文标点，例如 `"姓名：小林"` 中的中文冒号合法；注释中也可以正常使用中文。
+
+### 9.3 变量未声明、未初始化或名称写错
+
+这三种情况要分别检查：
+
+| 情况                         | 错误原因                 | 修改方向                 |
+| ---------------------------- | ------------------------ | ------------------------ |
+| 直接输出 `age`，却没有声明它 | 找不到这个变量           | 在使用之前声明并赋值     |
+| 只有 `int age;`，随后读取它  | 局部变量未初始化         | 在读取前执行 `age = 19;` |
+| 声明 `age`，却输出 `Age`     | 大小写不同，是另一个名字 | 使用与声明完全一致的名称 |
+
+不要为了消除报错就随意添加同名变量，先确认原本想使用的是哪一份数据。
+
+### 9.4 同一作用域重复声明变量
+
+错误写法，同一个 `main` 代码块中重复声明：
+
+```text
+int age = 19;
+int age = 20;
+```
+
+如果只是想更新年龄，第二行应该写成 `age = 20;`。类型写在声明时，后续赋值不重复写类型。
+
+### 9.5 数据类型不匹配
+
+下面这些是错误写法：
+
+| 错误片段                    | 原因                    | 合适的写法                   |
+| --------------------------- | ----------------------- | ---------------------------- |
+| `int height = 1.65;`        | int 不能直接保存小数    | `double height = 1.65;`      |
+| `int age = "19";`           | 字符串不能直接赋给 int  | `int age = 19;`              |
+| `char grade = "A";`         | 双引号表示字符串        | `char grade = 'A';`          |
+| `boolean student = 1;`      | Java 不用 1 表示布尔值  | `boolean student = true;`    |
+| `float temperature = 25.5;` | 右侧字面量默认是 double | `float temperature = 25.5F;` |
+
+根据数据含义选择正确的类型和值；不要只为了通过编译，随意删掉小数或把所有内容改成字符串。
+
+### 9.6 文件名与公开类名不一致
+
+文件叫 `HelloWorldDemo.java`，其中却写 `public class HelloWorld`，就不符合本章的文件命名规则。
+
+可以把公开类名改成 `HelloWorldDemo`，或通过 IDEA 的重命名功能同步调整名称。还要注意文件名的大小写和 `.java` 扩展名。
+
+### 9.7 main 方法写错或运行了其他类
+
+如果看不到正确的运行入口，检查类中是否有完整的 `public static void main(String[] args)`，尤其是 `main` 是否误写成 `Main`。
+
+如果代码修改后输出没有变化，检查 IDEA 运行窗口显示的类名，确认运行的是当前示例，而不是别的文件或参考答案。也可以暂时修改一条欢迎语，重新运行确认。
+
+### 9.8 从第一条相关报错开始排查
+
+一次语法错误可能让后面多行一起变红。例如，前一行少了结束引号，错误提示可能出现在下一行。
+
+建议按以下顺序处理：
+
+1. 点击第一条相关报错，查看对应代码及它的上一行。
+2. 对照检查拼写、标点、类型和括号配对。
+3. 一次修改一个明确的问题，重新编译或运行。
+4. 编译通过后再检查输出是否正确，特别是平均分和字符串拼接。
+
+“可以运行”只说明程序通过了当前的编译与启动检查，不代表计算结果一定正确。例如 `175 / 2` 能正常执行，但不符合需要小数平均分的要求。
+
+## 10. 本章小结
+
+### 10.1 核心知识回顾
+
+| 知识点     | 需要记住的内容                                              |
+| ---------- | ----------------------------------------------------------- |
+| 编译与运行 | `.java` 经编译生成 `.class`，由兼容的 JVM 执行              |
+| 程序结构   | 公开类名与文件名一致，本章从 main 启动                      |
+| 控制台输出 | print 不自动换行，println 输出后换行                        |
+| 注释       | 用于解释代码，不作为程序指令执行                            |
+| 变量       | 先声明，局部变量读取前先赋值，更新时不重复声明              |
+| 常用类型   | int 整数、double 小数、char 字符、boolean 状态、String 文字 |
+| 平均分     | 两个 int 相除会截去小数；本章使用总分除以 2.0               |
+| 字符串拼接 | 逐步判断加号两侧类型，需要先计算时使用括号                  |
+| 错误排查   | 从第一条相关错误开始，修复后重新运行并核对结果              |
+
+### 10.2 巩固练习
+
+先独立尝试，再对照前面的综合示例和源码。题目都使用固定数据，不需要键盘输入。
+
+**练习 1：个人信息卡。** 用变量保存自己的姓名、年龄、身高和是否为学生，分行输出。只修改姓名变量后重新运行，确认输出随之变化。
+
+**练习 2：变量更新。** 声明 `int completedExercises = 0;`，输出一次；再把同一变量改为 `1`，输出第二次。只声明一次变量。
+
+**练习 3：成绩计算。** 使用语文 `78`、数学 `91` 计算总分和平均分，预期为 `169` 和 `84.5`。再改成 `81`、`90`，预期为 `171` 和 `85.5`，不要修改公式或直接填入结果。
+
+**练习 4：预测结果。** 不运行程序，先判断下列表达式的结果，再放进 `main` 中用 println 验证：
+
+| 表达式                 | 思考方向                         |
+| ---------------------- | -------------------------------- |
+| `"结果：" + 10 + 20`   | 第一次加号是否已变成字符串拼接？ |
+| `"结果：" + (10 + 20)` | 括号内先得到什么类型的值？       |
+| `10 + 20 + "分"`       | 前两个操作数是否都是整数？       |
+| `9 / 2` 与 `9 / 2.0`   | 除法的操作数类型有何区别？       |
+
+<details>
+<summary>展开查看练习 4 的结果与原因</summary>
+
+- `"结果：" + 10 + 20` 得到字符串 `"结果：1020"`，从左往右连续拼接。
+- `"结果：" + (10 + 20)` 得到字符串 `"结果：30"`，先算括号内的加法。
+- `10 + 20 + "分"` 得到字符串 `"30分"`，先算整数加法，再拼接。
+- `9 / 2` 得到整数 `4`；`9 / 2.0` 得到浮点数 `4.5`。
+
+</details>
+
+**选做：三门成绩。** 加入英语成绩，计算三门总分与平均分，考虑除数应该如何修改。用 `80`、`90`、`86` 验证：总分为 `256`，平均分约为 `85.3333`，当前不要求控制小数位数。
+
+### 10.3 对应示例与源码
+
+完整可运行代码位于 [java-study-basic 仓库](https://github.com/coder-sunshine/java-study-basic)。本文的综合示例为便于独立阅读，类名或字段名可能略有调整；对应知识与仓库中的第一章一致。
+
+| 内容                                         | 仓库位置                                                                                                            |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| 第一个程序、输出、注释、变量、类型与成绩计算 | [第一章 examples](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter01intro/examples)   |
+| 个人信息、变量更新、成绩计算的练习骨架       | [第一章 exercises](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter01intro/exercises) |
+| 配套题目说明                                 | [第一章练习文档](https://github.com/coder-sunshine/java-study-basic/blob/main/exercises/chapter01.md)               |
+| 尝试后用于对照的参考答案                     | [第一章 solutions](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter01intro/solutions) |
+
+可以按 `HelloWorldDemo` → `ConsoleOutputDemo` → `CommentDemo` → `VariableDemo` → `DataTypeDemo` → `ScoreAverageDemo` 的顺序阅读和运行仓库示例。
