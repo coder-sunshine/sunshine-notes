@@ -1,0 +1,926 @@
+---
+title: 第三章：循环与流程控制
+description: 基于 JDK 17 学习 for、while、do-while、break、continue 与嵌套循环，完成求和、成绩统计、猜数字和重复菜单。
+sidebar:
+  label: 第三章：循环与流程控制
+  order: 3
+---
+
+第二章让程序根据条件选择操作，但每次启动通常只处理一组数据。本章学习如何重复执行代码：输出多个数字、反复接收输入、统计成绩，直到满足结束条件。
+
+本章使用 **JDK 17**。标记为 `java` 的代码块都是完整程序，新建与公开类名一致的 `.java` 文件即可运行；放进已有项目时，保留对应目录的包声明。暂不使用数组、集合、自定义方法或异常捕获。
+
+输入约定沿用第二章：数字位置输入 int 范围内的整数，数量处于正常练习范围，按提示提供结束标记，猜数字时最终提供正确答案。非数字、缺失输入和输入流提前结束的处理，留到异常章节。
+
+## 1. 为什么需要循环
+
+### 1.1 把重复的步骤交给程序
+
+输出 5 个数字，可以写 5 条输出语句；输出 1000 个数字，继续复制就很难维护。循环让我们写一次处理逻辑，再通过变化的变量重复执行。
+
+循环不仅用于输出，还可以读取多份数据、累计总分、反复判断用户选择。与 if 相比，if 决定某段代码这次是否执行，循环则会在执行后再次判断是否继续。
+
+### 1.2 看清循环的四个部分
+
+阅读一个循环时，先找出：
+
+| 部分     | 要回答的问题       | 输出 1～5 的例子 |
+| -------- | ------------------ | ---------------- |
+| 初始状态 | 从哪里开始？       | number 从 1 开始 |
+| 继续条件 | 什么时候继续？     | number 不大于 5  |
+| 循环体   | 每轮做什么？       | 输出 number      |
+| 状态更新 | 下一轮有什么变化？ | number 增加 1    |
+
+如果状态一直不变，条件也可能一直不变。写出循环之前，先能说明它在哪条路径上停止。
+
+### 1.3 三种循环怎么选
+
+| 循环     | 判断时机           | 循环体最少执行次数 | 常见场景                   |
+| -------- | ------------------ | ------------------ | -------------------------- |
+| for      | 每轮执行循环体之前 | 0 次               | 重复次数明确、按编号处理   |
+| while    | 每轮执行循环体之前 | 0 次               | 等待结束标记、根据状态继续 |
+| do-while | 每轮执行循环体之后 | 1 次               | 至少输入一次、先显示再选择 |
+
+它们有很多可以互相改写的场景。选择能清楚表达任务的写法即可，不必认为“次数不明确只能用 while”是一条语法限制。
+
+## 2. for：按次数或编号重复
+
+### 2.1 输出 1～5
+
+for 的括号中依次是初始化、继续条件、更新部分，中间用两个英文分号分隔。
+
+```java
+public class ForCountDemo {
+    public static void main(String[] args) {
+        // 从 1 开始，每轮加 1，不大于 5 时继续。
+        for (int number = 1; number <= 5; number++) {
+            System.out.println(number);
+        }
+        System.out.println("循环结束。");
+    }
+}
+```
+
+运行结果：
+
+```text
+1
+2
+3
+4
+5
+循环结束。
+```
+
+初始化 `int number = 1` 在进入这个 for 时执行一次，不会在每轮重新执行。只要正常进行到下一轮，就会先执行 `number++`，再判断条件。
+
+### 2.2 逐轮追踪执行顺序
+
+上例的执行顺序是：
+
+```text
+初始化 number = 1
+        ↓
+判断 number <= 5 ←────────┐
+   ↓ true                │
+执行循环体               │
+   ↓                     │
+执行 number++ ───────────┘
+
+条件为 false → 结束循环，继续执行后面的语句
+```
+
+| 判断时的 number | 条件是否成立 | 循环体输出 | 正常完成本轮后 |
+| --------------- | ------------ | ---------- | -------------- |
+| 1               | true         | 1          | number 变为 2  |
+| 2               | true         | 2          | number 变为 3  |
+| 3               | true         | 3          | number 变为 4  |
+| 4               | true         | 4          | number 变为 5  |
+| 5               | true         | 5          | number 变为 6  |
+| 6               | false        | 不执行     | 结束循环       |
+
+循环体执行 5 次，继续条件检查 6 次。最后一次条件检查只是决定停止，不会再输出 6。
+
+### 2.3 累加器与计数器
+
+累加器保存“总共多少”，计数器保存“有几个”。例如，1～5 的和是 15，参与相加的整数有 5 个，这两个结果含义不同。
+
+```java
+public class ForDemo {
+    public static void main(String[] args) {
+        // 放在循环外，保留之前各轮累计的结果。
+        int sum = 0;
+        for (int number = 1; number <= 5; number++) {
+            sum += number;
+            System.out.println("number = " + number + "，sum = " + sum);
+        }
+        System.out.println("1～5 的和：" + sum);
+    }
+}
+```
+
+运行结果：
+
+```text
+number = 1，sum = 1
+number = 2，sum = 3
+number = 3，sum = 6
+number = 4，sum = 10
+number = 5，sum = 15
+1～5 的和：15
+```
+
+每轮使用旧的 sum 加上本轮 number，再保存新值。若在循环体开头每次都执行 `sum = 0;`，就会清掉之前的累计结果。
+
+这里 sum 初始化为 0，是因为 0 不改变加法结果。不能由此推断所有累计任务都应从 0 开始；例如连乘通常从 1 开始。
+
+### 2.4 倒计时与不同步长
+
+更新部分不一定是 `++`。从大到小可以使用 `--`，每次跳过一个数可以使用 `+= 2`。
+
+```java
+public class StepLoopDemo {
+    public static void main(String[] args) {
+        System.out.println("倒计时：");
+        for (int count = 3; count >= 1; count--) {
+            System.out.println(count);
+        }
+        System.out.println("开始！");
+
+        System.out.println("2～10 的偶数：");
+        // 每轮增加 2，数字依次为 2、4、6、8、10。
+        for (int number = 2; number <= 10; number += 2) {
+            System.out.println(number);
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+倒计时：
+3
+2
+1
+开始！
+2～10 的偶数：
+2
+4
+6
+8
+10
+```
+
+起点、条件与变化方向要配合。例如从 3 开始倒计时，却写 `count++`，就无法按预期降到 1。
+
+### 2.5 循环变量的可用范围
+
+在 for 初始化部分声明的 `number`，可以在这个 for 的条件、更新和循环体中使用；循环结束后，不能直接读取它。
+
+因此，需要在循环结束后输出的 sum 放在循环外声明，只为当前循环计数的 number 则可以放在 for 内声明。局部变量的作用范围会在方法章节继续展开。
+
+## 3. while：条件成立就继续
+
+### 3.1 先判断，再执行
+
+while 将继续条件写在括号中，初始化和更新由我们放在合适的位置。
+
+```java
+public class WhileCountDemo {
+    public static void main(String[] args) {
+        int number = 1;
+        while (number <= 5) {
+            System.out.println(number);
+            // 更新不能漏，否则 number 会一直保持为 1。
+            number++;
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+1
+2
+3
+4
+5
+```
+
+这与前面的 for 输出相同。若初始 number 就是 6，第一次检查条件为 false，循环体一次也不会执行。
+
+### 3.2 使用结束标记读取多份数据
+
+输入数量事先不知道时，可以约定一个特殊值表示结束。这个值称为结束标记，本例使用 0。
+
+```java
+import java.util.Scanner;
+
+public class WhileDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        long sum = 0;
+        int count = 0;
+
+        // 先取得用于第一次条件判断的数据。
+        System.out.println("请输入整数（0 结束）：");
+        int number = scanner.nextInt();
+        while (number != 0) {
+            sum += number;
+            count++;
+
+            // 为下一轮更新输入，不能只反复处理同一个数。
+            System.out.println("请输入整数（0 结束）：");
+            number = scanner.nextInt();
+        }
+        scanner.close();
+
+        System.out.println("输入个数：" + count);
+        System.out.println("总和：" + sum);
+    }
+}
+```
+
+输入：
+
+```text
+3
+-2
+0
+```
+
+程序输出：
+
+```text
+请输入整数（0 结束）：
+请输入整数（0 结束）：
+请输入整数（0 结束）：
+输入个数：2
+总和：1
+```
+
+本文把输入与输出分开列出；实际控制台中，键入的数据会出现在相应提示之后。0 只负责结束，不计入个数和总和。若第一次就输入 0，则输出个数 0、总和 0。
+
+### 3.3 更新输入也是状态更新
+
+上例的状态更新不是 `number++`，而是再次调用 `scanner.nextInt()`，用新输入替换 number。
+
+如果漏掉循环末尾的读取，首次输入 3 后，number 会一直是 3，条件始终成立，程序会不停累计同一份数据。即使计算结果后来发生溢出，也不会让这个条件自动变成 false。
+
+sum 使用 long 扩大累计范围，但 long 也不是无限大；count 仍使用 int。本章按正常数量输入，暂不处理超大量数据导致的溢出问题。
+
+## 4. do-while：至少执行一次
+
+### 4.1 先执行循环体，再判断条件
+
+do-while 把继续条件放在循环体之后，所以即使条件第一次检查就是 false，循环体也已经执行过一次。
+
+这适合“先输入，再决定是否重试”。与普通 while 不同，结尾的 `while (...)` 后面有一个必须保留的英文分号。
+
+### 4.2 不合法就重新输入
+
+```java
+import java.util.Scanner;
+
+public class DoWhileDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int score;
+        do {
+            System.out.println("请输入整数成绩（0～100）：");
+            score = scanner.nextInt();
+            if (score < 0 || score > 100) {
+                System.out.println("成绩无效，请重新输入。");
+            }
+        } while (score < 0 || score > 100);
+        scanner.close();
+
+        System.out.println("有效成绩：" + score);
+    }
+}
+```
+
+输入：
+
+```text
+-1
+101
+0
+```
+
+程序输出：
+
+```text
+请输入整数成绩（0～100）：
+成绩无效，请重新输入。
+请输入整数成绩（0～100）：
+成绩无效，请重新输入。
+请输入整数成绩（0～100）：
+有效成绩：0
+```
+
+继续条件表达的是“还不合法”，因此使用范围外条件。输入 0 后条件变成 false，结束循环；**0 分是合法成绩**。
+
+### 4.3 变量为什么声明在 do 外面
+
+score 既要在循环体里赋值，又要在末尾条件和循环后使用，因此声明在 do 外面。
+
+它没有在声明时初始化，但正常执行到末尾条件之前，循环体已经至少执行一次，并给 score 赋值，所以这里可以读取。若将 `int score` 声明在循环体的花括号中，外面的条件就无法使用这个局部变量。
+
+## 5. break 与 continue
+
+### 5.1 break 结束，continue 跳过本轮剩余部分
+
+| 语句     | 本章中的作用              | 接下来发生什么           |
+| -------- | ------------------------- | ------------------------ |
+| break    | 结束最近一层循环或 switch | 从这个结构之后继续执行   |
+| continue | 跳过当前轮剩余语句        | 进入所在循环的下一轮流程 |
+
+```java
+public class BreakContinueDemo {
+    public static void main(String[] args) {
+        System.out.println("遇到 4 时结束循环：");
+        for (int number = 1; number <= 6; number++) {
+            if (number == 4) {
+                break;
+            }
+            System.out.println(number);
+        }
+
+        System.out.println("跳过偶数：");
+        for (int number = 1; number <= 6; number++) {
+            if (number % 2 == 0) {
+                continue;
+            }
+            System.out.println(number);
+        }
+        System.out.println("循环后的语句仍会执行。");
+    }
+}
+```
+
+运行结果：
+
+```text
+遇到 4 时结束循环：
+1
+2
+3
+跳过偶数：
+1
+3
+5
+循环后的语句仍会执行。
+```
+
+第一段在输出语句之前检查到 4，立即结束，所以不会输出 4。第二段遇到偶数只跳过本轮输出，后面的奇数仍有机会执行。
+
+### 5.2 continue 之后去哪里
+
+“下一轮”在不同循环中的具体流程不同：
+
+| 所在循环 | 执行 continue 后             |
+| -------- | ---------------------------- |
+| for      | 进入更新部分，再检查继续条件 |
+| while    | 直接重新检查继续条件         |
+| do-while | 进入末尾的继续条件判断       |
+
+因此，for 示例中的 `continue` 不会跳过更新部分的 `number++`；while 中若把更新写在 continue 后面，就可能无法更新。
+
+下面把 while 的计数更新放在过滤条件之前：
+
+```java
+public class WhileContinueDemo {
+    public static void main(String[] args) {
+        int number = 0;
+        while (number < 5) {
+            // 先更新，确保被跳过的那一轮也能改变状态。
+            number++;
+            if (number % 2 == 0) {
+                continue;
+            }
+            System.out.println(number);
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+1
+3
+5
+```
+
+不要把“更新必须在循环体最后一行”当作固定规则，应该检查每条继续执行的路径是否都能正确更新。
+
+### 5.3 while(true) 要有明确的退出路径
+
+`while (true)` 的条件始终成立，不会通过条件自身结束。常见写法是在循环体中读取输入，发现结束标记后使用 break。
+
+本章的成绩统计和猜数字就使用这种结构。每次写出它，都要明确指出哪一个分支会 break，而不是先写无限循环再临时猜测如何退出。
+
+### 5.4 break 不会自动结束整个程序
+
+未使用标签时，break 只结束最近的循环或 switch。如果循环外还有输出，它仍会执行；如果 switch 外还有循环，循环也可能继续。
+
+嵌套循环中，内层 break 不会自动结束外层循环。本章不使用带标签的 break 或 continue，先把最近一层结构判断清楚。
+
+## 6. 嵌套循环
+
+### 6.1 外层控制行，内层控制列
+
+循环体中还可以放另一个循环，这就是嵌套循环。输出表格时，可以让外层控制行号，内层控制当前行的列号。
+
+每当外层执行一轮，都会重新进入内层循环，并重新执行内层的初始化。不能认为内层变量会保留上一行结束时的值。
+
+### 6.2 输出三角形星号
+
+```java
+public class NestedLoopDemo {
+    public static void main(String[] args) {
+        for (int row = 1; row <= 3; row++) {
+            for (int column = 1; column <= row; column++) {
+                System.out.print("*");
+            }
+            // 一整行输出完毕后再换行。
+            System.out.println();
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+*
+**
+***
+```
+
+| 当前 row | column 依次取值 | 本行星号数 |
+| -------- | --------------- | ---------- |
+| 1        | 1               | 1          |
+| 2        | 1、2            | 2          |
+| 3        | 1、2、3         | 3          |
+
+外层循环体执行 3 次，输出星号的内层循环体总共执行 6 次，并不是 3 × 3 次。如果把内层条件改成 `column <= 4`，则每行都是 4 个星号，形成三行四列的矩形。
+
+### 6.3 换行位置决定输出形状
+
+内层用 print 输出一行中的各项，内层结束后用 `println()` 换行。这个换行位于**外层循环之内、内层循环之后**。
+
+如果把换行放进内层，每一项都会单独占一行；如果放到两个循环外，全部内容会挤到同一行。
+
+### 6.4 九九乘法表
+
+把星号替换成由行号、列号和乘法结果组成的等式，就可以输出下三角乘法表。
+
+```java
+public class MultiplicationTableDemo {
+    public static void main(String[] args) {
+        for (int row = 1; row <= 9; row++) {
+            for (int column = 1; column <= row; column++) {
+                // 从第二项开始输出分隔符，避免行末多一个制表符。
+                if (column > 1) {
+                    System.out.print("\t");
+                }
+                System.out.print(column + "×" + row + "=" + (column * row));
+            }
+            System.out.println();
+        }
+    }
+}
+```
+
+运行结果，等式之间是制表符：
+
+```text
+1×1=1
+1×2=2	2×2=4
+1×3=3	2×3=6	3×3=9
+1×4=4	2×4=8	3×4=12	4×4=16
+1×5=5	2×5=10	3×5=15	4×5=20	5×5=25
+1×6=6	2×6=12	3×6=18	4×6=24	5×6=30	6×6=36
+1×7=7	2×7=14	3×7=21	4×7=28	5×7=35	6×7=42	7×7=49
+1×8=8	2×8=16	3×8=24	4×8=32	5×8=40	6×8=48	7×8=56	8×8=64
+1×9=9	2×9=18	3×9=27	4×9=36	5×9=45	6×9=54	7×9=63	8×9=72	9×9=81
+```
+
+Java 字符串中的 `"\t"` 表示制表符，显示间距受控制台影响，不要求所有列像表格软件一样精确对齐。一共 9 行，第 n 行有 n 个等式，总共 45 个等式。
+
+## 7. 综合应用
+
+### 7.1 读取上限，计算 1～n 的和
+
+本例先检查上限是否在 1～10000 之间，合法才使用 for 累加。范围限制也使总和保持在 int 范围内。
+
+```java
+import java.util.Scanner;
+
+public class RangeSumDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.println("请输入上限 n（1～10000）：");
+        int limit = scanner.nextInt();
+        scanner.close();
+
+        if (limit < 1 || limit > 10000) {
+            System.out.println("上限无效，请输入 1～10000 的整数。");
+        } else {
+            int sum = 0;
+            for (int number = 1; number <= limit; number++) {
+                sum += number;
+            }
+            System.out.println("总和：" + sum);
+        }
+    }
+}
+```
+
+输入：
+
+```text
+5
+```
+
+程序输出：
+
+```text
+请输入上限 n（1～10000）：
+总和：15
+```
+
+检查上限为 1 时结果为 1，为 10000 时结果为 50005000；0、负数和 10001 都应得到无效提示。若把 `number <= limit` 改成 `<`，就会漏掉最后一个数 limit。
+
+### 7.2 成绩统计：只累计有效输入
+
+反复输入整数成绩，-1 结束；其他范围错误跳过，0～100 计入有效人数、总分和平均分。不需要先保存每一个成绩，使用计数器与累加器即可。
+
+```java
+import java.util.Scanner;
+
+public class ScoreStatisticsDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int count = 0;
+        long totalScore = 0;
+
+        while (true) {
+            System.out.println("请输入整数成绩（0～100，-1 结束）：");
+            int score = scanner.nextInt();
+            // 结束标记需要先于范围错误识别。
+            if (score == -1) {
+                break;
+            }
+            if (score < 0 || score > 100) {
+                System.out.println("成绩无效，请重新输入。");
+                continue;
+            }
+
+            totalScore += score;
+            count++;
+        }
+        scanner.close();
+
+        if (count == 0) {
+            System.out.println("没有有效成绩。");
+        } else {
+            System.out.println("有效人数：" + count);
+            System.out.println("总分：" + totalScore);
+            System.out.println("平均分：" + ((double) totalScore / count));
+        }
+    }
+}
+```
+
+输入：
+
+```text
+78
+101
+91
+-1
+```
+
+程序输出：
+
+```text
+请输入整数成绩（0～100，-1 结束）：
+请输入整数成绩（0～100，-1 结束）：
+成绩无效，请重新输入。
+请输入整数成绩（0～100，-1 结束）：
+请输入整数成绩（0～100，-1 结束）：
+有效人数：2
+总分：169
+平均分：84.5
+```
+
+### 7.3 结束、过滤、累计的顺序
+
+上例每次读取后，按三种情况处理：
+
+1. 是 -1：结束循环，不累计。
+2. 不是结束标记，但超出 0～100：提示后 continue，不累计。
+3. 是有效成绩：累计总分、增加人数，然后读取下一份。
+
+如果先把所有负数都过滤掉，-1 也会被 continue 跳过，程序就无法按约定结束。如果读取后立刻 `count++`，无效成绩和结束标记也可能被计入人数。
+
+0 分合法，因此不能用 0 作为这个例子的结束标记。不同题目对数字的含义可以不同，不能直接照搬前面 WhileDemo 的停止条件。
+
+只有 count 大于 0 才计算平均分，同时在除法前把总分转成 double。即使使用浮点除法，空数据也不应该输出一个 NaN 作为平均分。
+
+| 输入顺序        | 最终结果                                        |
+| --------------- | ----------------------------------------------- |
+| -1              | 没有有效成绩。                                  |
+| -2、101、-1     | 两次无效提示，没有有效成绩。                    |
+| 0、-1           | 有效人数 1，总分 0，平均分 0.0                  |
+| 0、100、-1      | 有效人数 2，总分 100，平均分 50.0               |
+| 80、101、90、-1 | 一次无效提示，有效人数 2，总分 170，平均分 85.0 |
+
+### 7.4 猜数字：猜中后停止
+
+答案先固定为 42，便于核对提示与次数。每次猜测前读取一个整数，范围错误不计次数，合法猜测才增加 attempts，猜中的那一次也要计入。
+
+```java
+import java.util.Scanner;
+
+public class GuessNumberDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int target = 42;
+        int attempts = 0;
+
+        while (true) {
+            System.out.println("请猜一个整数（1～100）：");
+            int guess = scanner.nextInt();
+            if (guess < 1 || guess > 100) {
+                System.out.println("范围无效，请输入 1～100 的整数。");
+                continue;
+            }
+
+            attempts++;
+            if (guess > target) {
+                System.out.println("猜大了。");
+            } else if (guess < target) {
+                System.out.println("猜小了。");
+            } else {
+                System.out.println("猜对了！有效猜测次数：" + attempts);
+                break;
+            }
+        }
+        scanner.close();
+    }
+}
+```
+
+输入：
+
+```text
+0
+60
+30
+42
+```
+
+程序输出：
+
+```text
+请猜一个整数（1～100）：
+范围无效，请输入 1～100 的整数。
+请猜一个整数（1～100）：
+猜大了。
+请猜一个整数（1～100）：
+猜小了。
+请猜一个整数（1～100）：
+猜对了！有效猜测次数：3
+```
+
+如果第一次输入 42，次数应为 1。输入 0、101、42，次数也应为 1。猜中后立即 break，不再读取下一次猜测。
+
+### 7.5 选读：生成随机答案
+
+基础版正确后，可以在 import 区域增加 `import java.util.Random;`，把 `int target = 42;` 替换为 `int target = new Random().nextInt(100) + 1;`。
+
+`nextInt(100)` 生成 0～99 的整数，加 1 后得到 1～100。先把 Random 当作工具使用，对象原理以后再学习。
+
+**答案生成必须放在猜测循环之外**，保证同一次游戏中答案保持不变。若放进循环体，每次猜测都会重新生成答案，大小提示就无法持续缩小同一个目标的范围。
+
+随机版的具体输出取决于答案和输入，不能总用“猜 42 必定成功”来验证。先用固定答案检查所有分支，再改成随机；尝试每次选择剩余范围的中间值，比从 1 顺着猜通常更高效。
+
+### 7.6 重复菜单：循环包住 switch
+
+第二章的 switch 每次只处理一个选项。现在在外面加 do-while，让非 0 操作结束后重新显示菜单。
+
+```java
+import java.util.Scanner;
+
+public class MenuLoopDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int choice;
+        do {
+            System.out.println("1. 查看使用说明");
+            System.out.println("2. 计算 1～10 的和");
+            System.out.println("0. 退出");
+            System.out.println("请输入菜单编号：");
+            choice = scanner.nextInt();
+
+            switch (choice) {
+                case 1:
+                    System.out.println("使用说明：输入 0 退出，其他编号选择功能。");
+                    break;
+                case 2:
+                    int sum = 0;
+                    for (int number = 1; number <= 10; number++) {
+                        sum += number;
+                    }
+                    System.out.println("1～10 的和：" + sum);
+                    break;
+                case 0:
+                    System.out.println("程序结束。");
+                    break;
+                default:
+                    System.out.println("编号无效，请重新选择。");
+                    break;
+            }
+        } while (choice != 0);
+        scanner.close();
+    }
+}
+```
+
+输入：
+
+```text
+1
+2
+9
+0
+```
+
+程序输出：
+
+```text
+1. 查看使用说明
+2. 计算 1～10 的和
+0. 退出
+请输入菜单编号：
+使用说明：输入 0 退出，其他编号选择功能。
+1. 查看使用说明
+2. 计算 1～10 的和
+0. 退出
+请输入菜单编号：
+1～10 的和：55
+1. 查看使用说明
+2. 计算 1～10 的和
+0. 退出
+请输入菜单编号：
+编号无效，请重新选择。
+1. 查看使用说明
+2. 计算 1～10 的和
+0. 退出
+请输入菜单编号：
+程序结束。
+```
+
+case 之后的 break 只结束 switch，执行流程随后来到外层 do-while 的条件。只有 choice 为 0，条件才为 false，菜单循环才结束。
+
+case 2 里的 for 结束后，程序先输出总和，再执行后面的 break；这个 break 此时位于 switch 内、for 外，因此退出的是 switch。
+
+sum 每次进入 case 2 都重新初始化为 0，这是正确的，因为每次菜单操作都要重新计算。它与“同一个统计循环每轮清空累计值”属于不同任务，不能只根据代码是否写在循环里判断对错。
+
+## 8. 常见错误与排查
+
+### 8.1 多执行或少执行一轮
+
+先对照任务明确是否包含终点。输出 1～5 应使用 `number <= 5`；使用 `< 5` 就只输出 1～4。
+
+可以列出前 3 轮和最后 1 轮的变量值，检查初始化、条件和更新。不要只凭“循环大概会跑五次”的感觉判断。
+
+### 8.2 循环后误加分号
+
+错误写法：
+
+```text
+for (int number = 1; number <= 5; number++);
+{
+    System.out.println("这里只输出一次。");
+}
+```
+
+for 后面的分号成了空循环体，后面的代码块只会在循环结束后执行一次。普通 while 条件后误加分号也会改变循环体，甚至可能导致无法更新状态。
+
+区分三处标点：for 括号内部的两个分号用于分隔；for、普通 while 的条件之后通常紧接循环体；do-while 的末尾 `while (...)` 之后则必须有分号。
+
+### 8.3 条件一直成立
+
+检查状态是否真正更新，以及更新方向能否接近结束条件。无限输出时，可以用 IDEA 的停止按钮结束本次运行，再修复代码。
+
+不要把程序依赖整数溢出后偶然结束，当作正确的停止逻辑。循环应在题目规定的范围内，通过明确条件或 break 结束。
+
+### 8.4 continue 跳过了必要更新
+
+下面是有问题的片段，不要直接作为示例运行：
+
+```text
+int number = 1;
+while (number <= 5) {
+    if (number == 3) {
+        continue;
+    }
+    number++;
+}
+```
+
+number 到 3 后，每轮都提前 continue，后面的自增永远无法执行。修改时重新安排更新或过滤逻辑，确保每条继续路径都能推进状态，而不是随意在某处再加一次 `++` 导致其他路径更新两次。
+
+### 8.5 累计变量被清零或统计对象错误
+
+总分总是等于最后一个成绩时，检查是否在每轮重新声明或清零了总分。人数不正确时，检查 `count++` 是否放在验证之后。
+
+计数器记录的是题目需要的对象：成绩统计记录有效成绩个数，猜数字记录有效猜测次数。它们都不等于“读取函数执行了几次”。
+
+### 8.6 结束标记与空数据未处理
+
+输入 -1 仍然继续时，检查是否在识别标记之前就过滤了所有负数。输入 0 分却结束时，检查是否混用了其他题目的停止条件。
+
+统计结束后，先判断有没有有效数据，再计算平均分。使用 double 并不能代替空数据判断。
+
+### 8.7 菜单或嵌套循环没有退出预期层级
+
+遇到 break 时，向外找到最近的循环或 switch，确认它实际结束的是哪一个结构。
+
+菜单中 case 0 的 break 结束 switch，外层循环仍要通过自己的条件结束。嵌套循环中，内层 break 后外层可能继续下一行，这不是 break 失效。
+
+### 8.8 用调试观察一轮变化
+
+在 IDEA 的循环体第一条语句处设置断点，调试运行，观察 number、sum、count、score 或 attempts。先预测本轮结束后的值，再单步执行核对。
+
+带输入的循环在下一次读取处等待是正常现象。先确认是在等待输入还是反复执行；输入流已经结束时，Scanner 可能抛出异常，不能把所有输入问题都归为死循环。
+
+## 9. 本章小结与巩固
+
+### 9.1 核心知识回顾
+
+| 知识点     | 需要记住的内容                                 |
+| ---------- | ---------------------------------------------- |
+| 循环结构   | 找到初始状态、继续条件、循环体与更新           |
+| for        | 次数或编号明确时常用，初始化执行一次           |
+| while      | 先判断，可能一次也不执行                       |
+| do-while   | 先执行后判断，至少执行一次，末尾有分号         |
+| 累加与计数 | 总共多少与有几个是不同问题                     |
+| break      | 结束最近一层循环或 switch                      |
+| continue   | 跳过当前轮剩余部分，注意下一步流程与更新       |
+| 嵌套循环   | 外层每轮重新进入内层，换行放在合适层级         |
+| 输入统计   | 先识别结束标记，再过滤无效数据，最后累计       |
+| 结果核对   | 检查起点、终点、空数据、错误输入路径与退出层级 |
+
+### 9.2 巩固练习
+
+**练习 1：区间求和。** 读取 1～10000 的上限 n，用 for 计算 1～n 的和，不使用现成求和公式代替循环。验证 1、5、10000 及范围外输入。
+
+**练习 2：成绩统计。** 独立实现 -1 结束的统计程序，无效成绩不计入人数。验证直接结束、只有无效输入、0 分、多个合法成绩以及合法与非法输入混合的情况。
+
+**练习 3：九九乘法表。** 使用嵌套 for 输出 9 行、45 个等式。检查每行项数和乘积，不用手写 45 条输出语句。行末是否保留制表符不影响本题要求。
+
+**练习 4：猜数字。** 使用固定答案 42，范围错误不计次数，猜中那次计数并立即结束。验证 `42`、`60、30、42`、`0、101、42`、`1、100、42`；可以把答案临时改为 1 或 100 测试边界，再恢复。
+
+**练习 5：预测循环。** 不运行程序，先回答：
+
+- for 从 1 开始、条件是 `number < 5`、每轮加 1，循环体执行几次？
+- while 的初始条件为 false，循环体执行几次？do-while 呢？
+- 三行三角形星号中，外层循环体和输出星号的语句分别执行几次？
+- 菜单选择 0 时，哪一步结束 switch，哪一步结束外层循环？
+
+<details>
+<summary>展开查看预测题答案</summary>
+
+- 第一题执行 4 次，number 依次为 1、2、3、4。
+- 普通 while 执行 0 次；do-while 在正常流程下至少执行 1 次。
+- 外层循环体执行 3 次，输出星号的语句执行 1 + 2 + 3，也就是 6 次。
+- case 0 的 break 结束 switch；随后 `choice != 0` 为 false，结束外层 do-while。
+
+</details>
+
+**选做：限制有效猜测次数。** 最多允许 7 次有效猜测，猜中立即结束；第 7 次猜错后输出次数用完及答案。范围错误不消耗次数。检查第一次猜中、恰好第七次猜中、七次全错、范围错误后再猜中。
+
+**选做：扩展循环菜单。** 增加一个选项，输出 1～10 中的偶数。确保功能执行后能回到菜单，编号错误能重选，输入 0 后不再显示菜单。
+
+### 9.3 对应示例与源码
+
+完整可运行代码位于 [java-study-basic 仓库](https://github.com/coder-sunshine/java-study-basic)。本文将部分内容拆成独立示例，菜单功能和求和类型也有适当调整，便于单独阅读；知识主线与仓库第三章一致。
+
+| 内容                                         | 仓库位置                                                                                                           |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| 三种循环、流程控制、星号、统计、猜数字与菜单 | [第三章 examples](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter03loop/examples)   |
+| 区间求和、成绩统计、乘法表与猜数字练习骨架   | [第三章 exercises](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter03loop/exercises) |
+| 配套题目说明                                 | [第三章练习文档](https://github.com/coder-sunshine/java-study-basic/blob/main/exercises/chapter03.md)              |
+| 尝试后用于对照的参考答案                     | [第三章 solutions](https://github.com/coder-sunshine/java-study-basic/tree/main/src/basic/chapter03loop/solutions) |
+
+仓库示例可以按 `ForDemo` → `WhileDemo` → `DoWhileDemo` → `BreakContinueDemo` → `NestedLoopDemo` → `ScoreStatisticsDemo` → `GuessNumberDemo` → `MenuLoopDemo` 的顺序阅读。
+
+本章始终使用 Scanner 解析整数，不需要把 `System.in.read()` 的字节读取实验混入循环主线。后续方法章节会学习如何把逐渐变长的 main 拆成职责清楚的方法。
