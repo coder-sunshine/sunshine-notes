@@ -1,0 +1,1070 @@
+---
+title: 第五章：数组与批量数据处理
+description: 基于 JDK 17 学习数组创建、下标、遍历、方法传参、引用与复制，完成成绩统计、线性查找、冒泡排序和数组反转。
+sidebar:
+  label: 第五章：数组与批量数据处理
+  order: 5
+---
+
+前四章已经能用变量保存数据，用分支和循环控制流程，再用方法拆分任务。如果要保存一个班的成绩，为每个人分别声明 score1、score2、score3 会很麻烦，也不方便统一处理。
+
+数组用来保存**一组同类型的数据**。本章把数组与前面的方法、循环结合，完成读取、统计、查找和排序。继续使用 **JDK 17**，标记为 `java` 的代码块都是完整程序，文件名与公开类名一致即可运行；放入现有项目时保留相应包声明。
+
+本章以一维 int 数组为主，辅助方法继续使用 public static。涉及输入时，约定输入完整且符合读取类型；范围错误会提示重输，文字代替整数等输入异常留到异常章节处理。除明确说明外，数组参数都约定非 null。
+
+## 1. 为什么需要数组
+
+### 1.1 从多个变量到一组数据
+
+如果保存五个成绩，只使用独立变量，需要分别命名，并为每一个变量重复编写计算逻辑。改用一个 scores 数组后，可以用循环依次访问其中的成绩。
+
+数组适合保存一组可以统一处理的数据，例如多名学生的成绩、多天的温度、多个商品的库存。当前数组中的元素类型固定：int 数组保存整数，String 数组保存字符串引用。
+
+### 1.2 数组的三个基本概念
+
+| 概念         | 含义                              | 示例       |
+| ------------ | --------------------------------- | ---------- |
+| 数组变量     | 保存对数组对象的引用              | scores     |
+| 元素         | 数组里某个位置保存的值            | 78、91、85 |
+| 下标（索引） | 元素在数组中的位置编号，从 0 开始 | 0、1、2    |
+
+例如 `int[] scores = {78, 91, 85};`：
+
+| 下标   | 0   | 1   | 2   |
+| ------ | --- | --- | --- |
+| 元素值 | 78  | 91  | 85  |
+
+这个数组的长度是 3，最后一个元素的下标是 2。**长度表示有几个元素，下标表示访问哪一个位置。**
+
+## 2. 声明、创建与初始化
+
+### 2.1 三种常见写法
+
+| 写法                                     | 含义                                             |
+| ---------------------------------------- | ------------------------------------------------ |
+| `int[] scores = {78, 91, 85};`           | 声明时直接列出元素，长度由元素个数决定           |
+| `int[] scores = new int[] {78, 91, 85};` | 创建并明确列出元素，也可用于后续赋值、传参或返回 |
+| `int[] scores = new int[3];`             | 创建长度为 3 的数组，元素先采用默认值            |
+
+推荐把方括号放在类型后面，写成 int[]，便于看出变量的类型。`int scores[]` 也合法，但本章统一使用前一种风格。
+
+直接列元素时不再同时指定长度，`new int[3] {78, 91, 85}` 是错误写法。只写 `int[] scores;` 只是声明了局部变量，还没有创建数组，也不能直接读取这个尚未赋值的局部变量。
+
+### 2.2 数组元素有默认值
+
+使用 new 按长度创建数组时，元素会自动初始化。这与“方法中的局部变量必须先赋值才能读取”并不矛盾：局部数组变量与数组内部的元素是两回事。
+
+```java
+public class ArrayCreationDemo {
+    public static void main(String[] args) {
+        int[] scores = {78, 91, 85};
+        int[] counts = new int[3];
+        double[] prices = new double[1];
+        boolean[] flags = new boolean[1];
+        char[] letters = new char[1];
+        String[] names = new String[1];
+
+        System.out.println("成绩数量：" + scores.length);
+        System.out.println("默认整数：" + counts[0]);
+        System.out.println("默认小数：" + prices[0]);
+        System.out.println("默认布尔值：" + flags[0]);
+        // 默认 char 不便直接观察，转换成整数查看其数值。
+        System.out.println("默认 char 的数值：" + (int) letters[0]);
+        System.out.println("默认字符串引用：" + names[0]);
+
+        int[] empty = new int[0];
+        System.out.println("空数组长度：" + empty.length);
+    }
+}
+```
+
+运行结果：
+
+```text
+成绩数量：3
+默认整数：0
+默认小数：0.0
+默认布尔值：false
+默认 char 的数值：0
+默认字符串引用：null
+空数组长度：0
+```
+
+| 元素类型               | 默认值                           |
+| ---------------------- | -------------------------------- |
+| byte、short、int、long | 0                                |
+| float、double          | 0.0                              |
+| boolean                | false                            |
+| char                   | 数值为 0 的字符，即 `\u0000`     |
+| String 等引用类型      | null，表示该位置暂时没有引用对象 |
+
+String 数组的默认元素不是空字符串 `""`，也不是文本 `"null"`。这里打印 null 只是输出时的显示形式；还不能对这个空引用调用字符串方法。
+
+### 2.3 数组长度创建后固定
+
+创建数组时必须能确定长度，长度可以来自整数变量。数组创建后，不能给 length 赋新值，也不能通过访问末尾之外的位置“追加”元素。
+
+可以让变量改为引用另一个新数组，但这不是让原数组变长。后面学习 ArrayList 时，再讨论更适合频繁增删元素的数据结构。
+
+零长度数组合法；负数长度会在运行时产生 NegativeArraySizeException。读取用户给出的长度时，应先校验范围，再创建数组。
+
+## 3. 下标、读取与修改
+
+### 3.1 使用方括号访问元素
+
+```java
+public class ArrayAccessDemo {
+    public static void main(String[] args) {
+        int[] scores = {78, 91, 85};
+        System.out.println("第一个成绩：" + scores[0]);
+        System.out.println("最后一个成绩：" + scores[scores.length - 1]);
+
+        // 给指定位置赋值，会修改该数组的元素。
+        scores[1] = 95;
+        scores[2] = scores[2] + 2;
+        System.out.println("修改后的第二个成绩：" + scores[1]);
+        System.out.println("修改后的第三个成绩：" + scores[2]);
+    }
+}
+```
+
+运行结果：
+
+```text
+第一个成绩：78
+最后一个成绩：85
+修改后的第二个成绩：95
+修改后的第三个成绩：87
+```
+
+`scores[1] = 95;` 修改的是数组第二个位置；`scores = ...` 才是让数组变量改为引用某个数组。区分“修改元素”与“给数组变量重新赋值”，对理解方法传参很重要。
+
+### 3.2 下标范围与 length
+
+长度为 n 的数组，合法下标是 0 到 n - 1。Java 的数组下标使用整数，不能用 1.5 这样的浮点数；本章统一使用 int 下标。
+
+数组长度写作 `scores.length`，没有括号。不要写成 `scores.length()`；String 的 length 方法写法不同，字符串章节再展开。
+
+对于长度为 3 的数组，访问 -1 或 3 都会产生 ArrayIndexOutOfBoundsException。异常说明访问位置超出了范围，并不会自动扩大数组。
+
+空数组虽然存在，但没有任何合法下标，所以不能直接访问 empty[0]，也不能用 empty[empty.length - 1] 读取最后一项。
+
+### 3.3 空数组与 null 不同
+
+| 状态                         | 含义                     | 是否能读取 length                   |
+| ---------------------------- | ------------------------ | ----------------------------------- |
+| `int[] values = new int[0];` | 存在一个数组，但没有元素 | 可以，结果为 0                      |
+| `int[] values = null;`       | 变量没有引用数组对象     | 不可以，会产生 NullPointerException |
+| 方法内只声明 `int[] values;` | 局部变量尚未赋值         | 不能读取，编译时就会报错            |
+
+本章处理空数组的示例，指的是长度为 0 的数组，不是 null。方法写明“非空数组”时，则进一步要求至少有一个元素。
+
+## 4. 用循环遍历数组
+
+### 4.1 普通 for：既能用下标，也能修改元素
+
+```java
+public class ArrayTraversalDemo {
+    public static void main(String[] args) {
+        int[] scores = {78, 91, 85};
+        for (int i = 0; i < scores.length; i++) {
+            System.out.println("第 " + (i + 1) + " 个成绩：" + scores[i]);
+        }
+
+        // 通过下标，把修改结果保存回原数组。
+        for (int i = 0; i < scores.length; i++) {
+            scores[i] = scores[i] + 1;
+        }
+        System.out.println("统一加 1 分后：");
+        for (int score : scores) {
+            System.out.println(score);
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+第 1 个成绩：78
+第 2 个成绩：91
+第 3 个成绩：85
+统一加 1 分后：
+79
+92
+86
+```
+
+循环条件写 `i < scores.length`，不是 `i <= scores.length`。当 i 等于长度时，已经越界。
+
+显示给用户的“第几个”通常从 1 开始，可以用 i + 1；访问数组时仍使用从 0 开始的 i。
+
+### 4.2 增强 for：依次读取每个元素
+
+`for (int score : scores)` 可以理解为：“依次取出 scores 中的每个 int 元素，把当前值交给变量 score。”
+
+它适合不需要下标的输出、求和、计数。不要把 score 当成下标，再写 scores[score]；成绩值 78 并不是合法的数组位置。
+
+### 4.3 修改循环变量，不等于修改数组元素
+
+```java
+public class EnhancedForDemo {
+    public static void main(String[] args) {
+        int[] numbers = {10, 20};
+        for (int number : numbers) {
+            // number 得到当前整数值的副本，赋值不会写回数组。
+            number = number + 5;
+        }
+        System.out.println("只改循环变量后：");
+        for (int number : numbers) {
+            System.out.println(number);
+        }
+
+        for (int i = 0; i < numbers.length; i++) {
+            numbers[i] = numbers[i] + 5;
+        }
+        System.out.println("通过下标修改后：");
+        for (int number : numbers) {
+            System.out.println(number);
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+只改循环变量后：
+10
+20
+通过下标修改后：
+15
+25
+```
+
+这个示例处理的是基本类型 int 元素。以后遍历对象数组时，循环变量可能拿到对象引用，可以通过引用修改对象内部状态；但给循环变量重新赋值，仍不会替换数组对应位置。
+
+| 需求             | 更直接的遍历方式                 |
+| ---------------- | -------------------------------- |
+| 只读取每一个元素 | 增强 for                         |
+| 使用位置编号     | 普通 for                         |
+| 给元素重新赋值   | 普通 for，通过下标修改           |
+| 从末尾向前处理   | 普通 for，从 length - 1 开始递减 |
+| 同时访问相邻元素 | 普通 for，并检查边界             |
+
+## 5. 数组与方法
+
+### 5.1 数组可以作为参数
+
+```java
+public class ArrayParameterDemo {
+    public static void main(String[] args) {
+        int[] scores = {78, 91, 85};
+        System.out.println("总分：" + sum(scores));
+        System.out.println("及格人数：" + countAtLeast(scores, 60));
+        System.out.println("空数组总分：" + sum(new int[0]));
+    }
+
+    public static long sum(int[] values) {
+        // 使用 long 累加，避免多个 int 相加时发生 int 溢出。
+        long total = 0;
+        for (int value : values) {
+            total += value;
+        }
+        return total;
+    }
+
+    public static int countAtLeast(int[] values, int threshold) {
+        int count = 0;
+        for (int value : values) {
+            if (value >= threshold) {
+                count++;
+            }
+        }
+        return count;
+    }
+}
+```
+
+运行结果：
+
+```text
+总分：254
+及格人数：3
+空数组总分：0
+```
+
+形参 int[] values 表示接收一个 int 数组的引用值。不同长度的 int 数组都可以传入，方法内部用 values.length 获取实际长度，不必把元素数量写死。
+
+sum 在没有元素时保持初始值 0；countAtLeast 在没有元素时返回 0。给方法设计边界行为，可以让调用方更容易使用它。
+
+### 5.2 方法也可以返回数组
+
+```java
+public class ArrayReturnDemo {
+    public static void main(String[] args) {
+        int[] numbers = createSequence(4);
+        System.out.println("长度：" + numbers.length);
+        for (int number : numbers) {
+            System.out.println(number);
+        }
+        System.out.println("零长度结果：" + createSequence(0).length);
+    }
+
+    // 调用约定：size 在 0～10000 之间。
+    public static int[] createSequence(int size) {
+        int[] result = new int[size];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = i + 1;
+        }
+        return result;
+    }
+}
+```
+
+运行结果：
+
+```text
+长度：4
+1
+2
+3
+4
+零长度结果：0
+```
+
+返回类型 int[] 表示交回一个数组引用。方法结束后，局部变量 result 的作用域结束，但返回的数组仍能通过调用方的 numbers 访问，不会因为方法结束就立刻失效。
+
+同一个方法可以通过返回数组交回一组同类型结果。不要为了返回多个不同含义的数据，就随意规定“下标 0 放年龄、下标 1 放分数、下标 2 放编号”；后续的类更适合描述这类结构。
+
+## 6. 数组引用与值传递
+
+### 6.1 赋值不会自动复制数组
+
+```java
+public class ArrayReferenceDemo {
+    public static void main(String[] args) {
+        int[] first = {10, 20, 30};
+        int[] second = first;
+        second[0] = 99;
+        System.out.println("second 修改元素后，first[0]：" + first[0]);
+
+        changeFirst(first);
+        System.out.println("方法修改元素后，first[0]：" + first[0]);
+
+        replaceArray(first);
+        System.out.println("方法重新赋值后，first[0]：" + first[0]);
+        System.out.println("两个变量仍引用同一数组：" + (first == second));
+    }
+
+    public static void changeFirst(int[] values) {
+        // 调用约定：数组至少有一个元素。
+        values[0] = 7;
+    }
+
+    public static void replaceArray(int[] values) {
+        // 仅让形参改为引用新数组，不会替换 main 中 first 的引用。
+        values = new int[] {1, 2, 3};
+        System.out.println("方法内新数组的首项：" + values[0]);
+    }
+}
+```
+
+运行结果：
+
+```text
+second 修改元素后，first[0]：99
+方法修改元素后，first[0]：7
+方法内新数组的首项：1
+方法重新赋值后，first[0]：7
+两个变量仍引用同一数组：true
+```
+
+执行 `int[] second = first;` 后，可以这样理解：
+
+```text
+first  ──→ 同一个数组 [10, 20, 30]
+second ──↗
+```
+
+修改 second[0] 时，通过 second 找到了这个共同的数组。first 也能看到元素变化，因为没有创建另一份元素副本。
+
+### 6.2 Java 始终是值传递
+
+第四章的 int 参数传递整数值的副本；本章的数组参数传递**引用值的副本**。调用方变量与形参是不同变量，但它们可以引用同一个数组。
+
+| 方法中的操作                    | 对调用方的影响                           |
+| ------------------------------- | ---------------------------------------- |
+| `values[0] = 7;`                | 修改共同引用的数组元素，调用方能观察到   |
+| `values = new int[] {1, 2, 3};` | 只改变形参自己的引用，不会替换调用方变量 |
+
+因此，不能把数组参数描述成“Java 改用了引用传递”。准确说法是：**复制引用值后，可以通过这个引用修改同一个对象。**
+
+如果想让调用方使用一个新数组，可以返回新数组，再由调用方接收，例如 `numbers = createSequence(4);`。
+
+## 7. 复制数组与比较内容
+
+### 7.1 使用循环创建独立副本
+
+```java
+public class ArrayCopyDemo {
+    public static void main(String[] args) {
+        int[] original = {10, 20, 30};
+        int[] copied = copyOf(original);
+        copied[0] = 99;
+
+        System.out.println("原数组首项：" + original[0]);
+        System.out.println("副本首项：" + copied[0]);
+        System.out.println("是否引用同一数组：" + (original == copied));
+        System.out.println("空数组副本长度：" + copyOf(new int[0]).length);
+    }
+
+    public static int[] copyOf(int[] source) {
+        int[] result = new int[source.length];
+        for (int i = 0; i < source.length; i++) {
+            result[i] = source[i];
+        }
+        return result;
+    }
+}
+```
+
+运行结果：
+
+```text
+原数组首项：10
+副本首项：99
+是否引用同一数组：false
+空数组副本长度：0
+```
+
+复制的关键是先创建另一个数组，再逐项保存元素值。对本章 int[] 来说，副本的元素与原数组可以独立修改。
+
+以后复制对象数组或二维数组时，单纯复制每个位置的引用，并不等于复制引用所指对象的内部内容，不要直接把本节推广成“所有数组这样复制都完全独立”。
+
+### 7.2 == 与内容相同是两个问题
+
+对于数组，== 比较是否引用同一个数组对象，不会逐个比较元素。两个分别创建、都包含 10、20、30 的数组，使用 == 比较仍是 false。
+
+一维数组可以用后面介绍的 `Arrays.equals` 比较内容：长度相同、对应位置的元素相等，才认为内容相等。排序也有方向，内容比较也有顺序，`{1, 2}` 与 `{2, 1}` 不相等。
+
+## 8. 综合应用：成绩统计
+
+### 8.1 先明确数据与空数组规则
+
+对一组成绩，常见任务包括总分、平均分、最高分、最低分和及格人数。可以把每个任务拆成方法，让输出方法负责组合结果。
+
+本例约定成绩均为 0～100 的整数，数组非 null。sum 与 countPassing 接受空数组；max、min 与 average 要求至少有一个元素，由 printReport 先检查，再调用。
+
+空数组没有最高分、最低分或平均分，不用 0 假装这些统计结果。总分与人数则可以自然地定义为 0。
+
+### 8.2 完整统计程序
+
+```java
+public class ArrayStatisticsDemo {
+    public static void main(String[] args) {
+        int[] scores = {78, 91, 85, 56, 100};
+        printReport(scores);
+        printReport(new int[0]);
+    }
+
+    public static void printReport(int[] scores) {
+        if (scores.length == 0) {
+            System.out.println("没有成绩，无法统计最高分、最低分和平均分。");
+            return;
+        }
+        System.out.println("人数：" + scores.length);
+        System.out.println("总分：" + sum(scores));
+        System.out.println("平均分：" + average(scores));
+        System.out.println("最高分：" + max(scores));
+        System.out.println("最低分：" + min(scores));
+        System.out.println("及格人数：" + countPassing(scores));
+    }
+
+    public static long sum(int[] values) {
+        long total = 0;
+        for (int value : values) {
+            total += value;
+        }
+        return total;
+    }
+
+    // 调用约定：values 至少有一个元素。
+    public static double average(int[] values) {
+        return (double) sum(values) / values.length;
+    }
+
+    // 用首项初始化，不能假设元素一定大于 0。
+    public static int max(int[] values) {
+        int result = values[0];
+        for (int i = 1; i < values.length; i++) {
+            if (values[i] > result) {
+                result = values[i];
+            }
+        }
+        return result;
+    }
+
+    // 调用约定与 max 相同：values 至少有一个元素。
+    public static int min(int[] values) {
+        int result = values[0];
+        for (int i = 1; i < values.length; i++) {
+            if (values[i] < result) {
+                result = values[i];
+            }
+        }
+        return result;
+    }
+
+    public static int countPassing(int[] scores) {
+        int count = 0;
+        for (int score : scores) {
+            if (score >= 60) {
+                count++;
+            }
+        }
+        return count;
+    }
+}
+```
+
+运行结果：
+
+```text
+人数：5
+总分：410
+平均分：82.0
+最高分：100
+最低分：56
+及格人数：4
+没有成绩，无法统计最高分、最低分和平均分。
+```
+
+### 8.3 初始化与计算类型为什么这样选择
+
+求和从 0 开始；求最大值从第一个元素开始，再与后面的元素比较。如果把最大值初始为 0，那么数组全是负数时，会错误地得到一个根本不存在的 0。
+
+平均分使用 `(double) sum(values) / values.length`，在除法前转换。即使 sum 返回 long，直接进行 long 除以 int 仍是整数除法，之后赋给 double 也找不回被截去的小数。
+
+本例每个统计方法都遍历数组，写法清晰但会进行多轮遍历。当前先关注正确性与方法职责，后续也可以练习在一轮循环中同时累计多个统计量。
+
+## 9. 线性查找：寻找一个值的位置
+
+### 9.1 从头逐个比较
+
+线性查找从下标 0 开始比较，找到目标就返回下标，全部检查后仍没找到则返回 -1。合法下标从 0 开始，所以 -1 可以表示“未找到”。
+
+```java
+public class LinearSearchDemo {
+    public static void main(String[] args) {
+        int[] numbers = {12, 7, 25, 7};
+        printSearchResult(numbers, 7);
+        printSearchResult(numbers, 12);
+        printSearchResult(numbers, 99);
+        System.out.println("空数组查找结果：" + indexOf(new int[0], 7));
+    }
+
+    public static int indexOf(int[] values, int target) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == target) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static void printSearchResult(int[] values, int target) {
+        int index = indexOf(values, target);
+        if (index == -1) {
+            System.out.println(target + " 不在数组中。");
+            return;
+        }
+        System.out.println(target + " 的首个下标：" + index);
+    }
+}
+```
+
+运行结果：
+
+```text
+7 的首个下标：1
+12 的首个下标：0
+99 不在数组中。
+空数组查找结果：-1
+```
+
+### 9.2 重复值与返回位置
+
+本例找到第一个匹配元素就 return，所以 7 返回 1，而不是 3。查找“最后一次出现位置”“出现次数”或“全部位置”，需要分别设计不同的处理逻辑。
+
+判断是否找到时，使用 `index != -1` 或 `index >= 0`，不能用 `index > 0`，否则会漏掉下标 0。
+
+拿返回结果访问数组前必须先判断。没有找到时直接访问 values[index]，相当于访问 values[-1]，会越界。
+
+线性查找不要求数组预先有序。最坏情况下需要查看全部 n 个元素，比较次数随元素数量近似成正比，常记作 O(n)。现在先理解“数据越多，可能要比较越多次”。
+
+## 10. 冒泡排序：把元素按大小排列
+
+### 10.1 相邻比较，把较大值向后移动
+
+升序排列表示从小到大。冒泡排序每轮比较相邻元素，如果前一个更大，就交换两者。一轮完成后，当前未排好部分的最大值到达这一部分的末尾。
+
+以 `{5, 2, 4, 1}` 为例，第一轮：
+
+| 比较下标 | 比较前 | 操作 | 操作后     |
+| -------- | ------ | ---- | ---------- |
+| 0 与 1   | 5、2   | 交换 | 2、5、4、1 |
+| 1 与 2   | 5、4   | 交换 | 2、4、5、1 |
+| 2 与 3   | 5、1   | 交换 | 2、4、1、5 |
+
+第一轮结束并没有整体排好，只确定最大值 5 在最后。下一轮只需要处理前面三个位置。
+
+### 10.2 完整排序程序
+
+```java
+public class BubbleSortDemo {
+    public static void main(String[] args) {
+        int[] numbers = {5, 2, 4, 1};
+        System.out.println("排序前：");
+        printArray(numbers);
+        bubbleSort(numbers);
+        System.out.println("排序后：");
+        printArray(numbers);
+    }
+
+    public static void bubbleSort(int[] values) {
+        for (int end = values.length - 1; end > 0; end--) {
+            // 每一轮都重新记录本轮是否发生交换。
+            boolean swapped = false;
+            for (int i = 0; i < end; i++) {
+                if (values[i] > values[i + 1]) {
+                    int temporary = values[i];
+                    values[i] = values[i + 1];
+                    values[i + 1] = temporary;
+                    swapped = true;
+                }
+            }
+            if (!swapped) {
+                break;
+            }
+        }
+    }
+
+    public static void printArray(int[] values) {
+        for (int value : values) {
+            System.out.println(value);
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+排序前：
+5
+2
+4
+1
+排序后：
+1
+2
+4
+5
+```
+
+### 10.3 看懂边界与交换
+
+外层 end 表示本轮最后一个需要比较到的位置。内层使用 `i < end`，确保访问 i + 1 时仍在本轮有效范围内。
+
+交换必须先保存旧值。直接先把 values[i] 改成 values[i + 1]，再把 values[i + 1] 改成已经更新的 values[i]，会把两项都变成同一个值。
+
+一轮中没有发生交换，说明数组已经有序，可以提前结束。swapped 要放在外层循环内，每一轮都重新设为 false。
+
+这个方法接受空数组与单元素数组：外层循环不会进入，数组保持原样。它通过参数修改原数组，不返回新数组；需要保留原顺序时，应先复制，再排序副本。
+
+### 10.4 学习排序与实际使用
+
+冒泡排序适合练习循环边界与交换，最坏情况下比较次数约为 n × (n - 1) / 2，常记作 O(n²)。它不适合用来处理大量数据。
+
+实际开发中，一般优先使用标准库的 Arrays.sort。先手写一次排序，是为了看懂过程；使用库方法时，也要知道它会修改原数组。
+
+## 11. 数组反转：前后交换
+
+### 11.1 反转与排序不同
+
+反转只把现有顺序倒过来，并不比较数值大小。例如 `{3, 1, 2, 4}` 反转得到 `{4, 2, 1, 3}`，并不是降序排列。
+
+```java
+public class ArrayReverseDemo {
+    public static void main(String[] args) {
+        int[] numbers = {3, 1, 2, 4};
+        reverse(numbers);
+        System.out.println("反转结果：");
+        for (int number : numbers) {
+            System.out.println(number);
+        }
+    }
+
+    public static void reverse(int[] values) {
+        int left = 0;
+        int right = values.length - 1;
+        while (left < right) {
+            // 一次交换两个对称位置，然后向中间移动。
+            int temporary = values[left];
+            values[left] = values[right];
+            values[right] = temporary;
+            left++;
+            right--;
+        }
+    }
+}
+```
+
+运行结果：
+
+```text
+反转结果：
+4
+2
+1
+3
+```
+
+### 11.2 为什么只处理到中间
+
+每交换一对位置，left 向右移动，right 向左移动。两个位置相遇或交错时结束；奇数长度数组中间那一项不必移动。
+
+如果从头到尾都交换对称位置，后半段会把前面已经完成的交换再做一次，最终可能回到原顺序。空数组和单元素数组也无需交换。
+
+## 12. Arrays 工具类
+
+### 12.1 输出、复制、排序与比较
+
+java.util.Arrays 提供了常见数组操作。使用前导入 `import java.util.Arrays;`，注意 Arrays 是工具类，不能把变量名 scores 与工具类名混淆。
+
+```java
+import java.util.Arrays;
+
+public class ArraysUtilityDemo {
+    public static void main(String[] args) {
+        int[] original = {3, 1, 2};
+        int[] copied = Arrays.copyOf(original, original.length);
+        System.out.println("原数组：" + Arrays.toString(original));
+        System.out.println("是否同一数组：" + (original == copied));
+        System.out.println("复制后内容相同：" + Arrays.equals(original, copied));
+
+        Arrays.sort(copied);
+        System.out.println("副本排序后：" + Arrays.toString(copied));
+        System.out.println("原数组保持原顺序：" + Arrays.toString(original));
+        System.out.println("排序后内容相同：" + Arrays.equals(original, copied));
+
+        int[] expanded = Arrays.copyOf(original, 5);
+        System.out.println("较长的新数组：" + Arrays.toString(expanded));
+    }
+}
+```
+
+运行结果：
+
+```text
+原数组：[3, 1, 2]
+是否同一数组：false
+复制后内容相同：true
+副本排序后：[1, 2, 3]
+原数组保持原顺序：[3, 1, 2]
+排序后内容相同：false
+较长的新数组：[3, 1, 2, 0, 0]
+```
+
+| 方法            | 本章用法                                 | 是否修改传入的原数组 |
+| --------------- | ---------------------------------------- | -------------------- |
+| Arrays.toString | 将一维数组内容转换为便于阅读的字符串     | 否                   |
+| Arrays.copyOf   | 返回指定长度的新数组，复制能容纳的原元素 | 否                   |
+| Arrays.sort     | 将 int 数组按升序排列                    | 是                   |
+| Arrays.equals   | 比较一维数组长度及对应元素               | 否                   |
+
+copyOf 的目标长度较大时，int 新位置补 0；较小时，尾部元素被截去。无论长度是否改变，创建的都是另一个数组，原数组的长度不会改变。
+
+### 12.2 为什么直接输出数组看不到元素
+
+把 int[] 直接传给 println，通常会看到类似 `[I@...` 的类型与标识信息，并不是元素清单，也不能把它当成可靠的内存地址。
+
+本章要输出元素，使用循环或 `Arrays.toString(numbers)`。对于二维数组，使用 Arrays.deepToString 才能更方便地展开内部各行，见选读部分。
+
+## 13. 综合应用：录入并分析成绩
+
+### 13.1 输入、统计、排序分开
+
+前面的成绩来自直接初始化。下面改为先读取人数，再创建数组，并为每个位置读取一个有效成绩。
+
+程序按这几个步骤运行：
+
+1. 人数必须在 1～100 之间，非法时重输。
+2. 创建对应长度的 int 数组。
+3. 每项成绩必须在 0～100 之间，非法时停留在当前学生。
+4. 输出原始成绩，统计总分、平均分和及格人数。
+5. 复制后排序，保留原始录入顺序。
+
+### 13.2 完整程序
+
+```java
+import java.util.Arrays;
+import java.util.Scanner;
+
+public class ScoreArrayDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int count = readInRange(scanner, "请输入人数（1～100）：", 1, 100);
+        int[] scores = new int[count];
+
+        for (int i = 0; i < scores.length; i++) {
+            scores[i] = readInRange(scanner,
+                    "请输入第 " + (i + 1) + " 名学生的成绩（0～100）：", 0, 100);
+        }
+
+        System.out.println("原始成绩：" + Arrays.toString(scores));
+        System.out.println("总分：" + sum(scores));
+        System.out.println("平均分：" + (double) sum(scores) / scores.length);
+        System.out.println("及格人数：" + countPassing(scores));
+
+        // 排序副本，不打乱原始录入顺序。
+        int[] sorted = Arrays.copyOf(scores, scores.length);
+        Arrays.sort(sorted);
+        System.out.println("升序成绩：" + Arrays.toString(sorted));
+        System.out.println("原始成绩仍为：" + Arrays.toString(scores));
+        scanner.close();
+    }
+
+    // 调用约定：minimum <= maximum，输入完整且为 int 整数。
+    public static int readInRange(Scanner scanner, String prompt, int minimum, int maximum) {
+        while (true) {
+            System.out.println(prompt);
+            int value = scanner.nextInt();
+            if (value >= minimum && value <= maximum) {
+                return value;
+            }
+            System.out.println("输入超出范围，请重新输入。");
+        }
+    }
+
+    public static long sum(int[] values) {
+        long total = 0;
+        for (int value : values) {
+            total += value;
+        }
+        return total;
+    }
+
+    public static int countPassing(int[] scores) {
+        int count = 0;
+        for (int score : scores) {
+            if (score >= 60) {
+                count++;
+            }
+        }
+        return count;
+    }
+}
+```
+
+输入（人数 3，第一项错误成绩 101 需要重输）：
+
+```text
+3
+101
+78
+59
+91
+```
+
+程序输出：
+
+```text
+请输入人数（1～100）：
+请输入第 1 名学生的成绩（0～100）：
+输入超出范围，请重新输入。
+请输入第 1 名学生的成绩（0～100）：
+请输入第 2 名学生的成绩（0～100）：
+请输入第 3 名学生的成绩（0～100）：
+原始成绩：[78, 59, 91]
+总分：228
+平均分：76.0
+及格人数：2
+升序成绩：[59, 78, 91]
+原始成绩仍为：[78, 59, 91]
+```
+
+### 13.3 为什么错误成绩不会占用一个位置
+
+外层 for 负责学生编号，readInRange 内部的 while 负责反复读取当前位置的有效值。只有 readInRange 返回合法成绩，赋值才完成，外层循环才前进。
+
+人数至少为 1，因此平均分的分母不为 0。若以后允许人数为 0，需要像第 8 节一样先处理空数组，再决定是否计算平均分。
+
+Scanner 仍由 main 创建和关闭。辅助方法使用传入的 Scanner，不创建多个争抢 System.in 的输入工具，也不在读取第一项后提前关闭它。
+
+## 14. 选读：二维数组
+
+### 14.1 数组的每一项也可以是数组
+
+二维数组可以保存多行数据，例如每行代表一名学生，每列代表一门课程。Java 的 int[][] 可以理解为“元素是 int[] 引用的数组”，每行长度不一定相同。
+
+主线先掌握一维数组与方法；以下内容用于建立二维数组的直观认识。
+
+```java
+import java.util.Arrays;
+
+public class TwoDimensionalArrayDemo {
+    public static void main(String[] args) {
+        // 各行可以有不同数量的成绩，也可以是一行空数组。
+        int[][] scores = {{80, 90}, {75, 85, 95}, {}};
+        System.out.println("行数：" + scores.length);
+        for (int row = 0; row < scores.length; row++) {
+            long total = 0;
+            for (int column = 0; column < scores[row].length; column++) {
+                total += scores[row][column];
+            }
+            System.out.println("第 " + (row + 1) + " 行：数量="
+                    + scores[row].length + "，总分=" + total);
+        }
+        System.out.println("全部内容：" + Arrays.deepToString(scores));
+    }
+}
+```
+
+运行结果：
+
+```text
+行数：3
+第 1 行：数量=2，总分=170
+第 2 行：数量=3，总分=255
+第 3 行：数量=0，总分=0
+全部内容：[[80, 90], [75, 85, 95], []]
+```
+
+### 14.2 两层长度分别表示什么
+
+scores.length 是外层数组的长度，在本例中表示行数；scores[row].length 是某一行的元素数量。内层循环要使用当前行的长度，不能直接套用外层长度，也不能默认每一行都与第 0 行等长。
+
+`new int[2][3]` 会创建两行、每行三个 int 元素，各元素初始为 0；`new int[2][]` 只创建外层数组，两个行引用初始都是 null，需要分别创建内部数组后再访问元素或行长度。
+
+二维数组直接进行 Arrays.copyOf 只复制外层的行引用，内部各行仍可能共享。二维数组的完整复制不在本章主线展开。
+
+## 15. 常见错误与排查
+
+### 15.1 下标越界或循环少处理一项
+
+检查起点是否为 0，结束条件是否为 i < length。需要访问 i + 1 时，还要确保 i + 1 小于 length。
+
+若循环条件写成 i < length - 1，可能漏掉最后一个元素；相邻比较的排序则有意缩小范围。不要脱离循环中实际访问的位置，只背一个固定条件。
+
+### 15.2 认为声明变量就创建了数组
+
+方法里只写 int[] values，既没有创建数组，也没有为局部变量赋值。先使用 new 或初始化列表得到数组，再访问元素。
+
+如果变量明确赋值为 null，编译器允许声明，但不能读取其 length 或访问元素。空数组则可以读长度、参与遍历，只是循环体不会执行。
+
+### 15.3 重新赋值时只写花括号
+
+声明时可以使用 `int[] values = {1, 2};`，但之后不能单独写 `values = {3, 4};`。应写 `values = new int[] {3, 4};`，方法传参或 return 中直接创建数组时也使用 new int[] 的形式。
+
+### 15.4 用 length()，或试图给 length 赋值
+
+数组使用 length 字段，没有括号，而且创建后长度固定。需要另一个长度时，应创建新数组或使用 Arrays.copyOf，并接收新数组的引用。
+
+### 15.5 把引用赋值当成复制，把 == 当成内容比较
+
+`int[] copied = original;` 只有两个变量名，没有第二份数组。使用循环或 Arrays.copyOf 创建副本；使用 Arrays.equals 比较一维数组内容。
+
+先确认需求是“共同修改同一个数组”还是“保留原始数据并独立修改”，再决定是否复制。
+
+### 15.6 增强 for 的变量变了，数组却没变
+
+对于 int 元素，增强 for 的变量接收整数副本。想把每项加 1，使用普通 for，并写回 values[i]；只计算 value + 1 而不保存也不会更新原数组。
+
+### 15.7 最大值初始为 0，或空数组直接读取首项
+
+通用最大值方法应从首项初始化，以正确处理全负数。读取首项前必须保证长度至少为 1；最小值同理。
+
+本章用调用约定与调用前判断处理这一点。后面学习异常时，可以进一步为公共方法设计明确的非法参数行为。
+
+### 15.8 查找结果为 -1，仍继续访问元素
+
+indexOf 返回 -1 是结果约定，不是合法下标。先判断是否找到，再访问对应位置。下标 0 则是正常结果，不能误判为失败。
+
+### 15.9 排序后原数据顺序也变了
+
+冒泡排序与 Arrays.sort 都修改传入数组。如果多个变量引用同一个数组，都会观察到顺序变化。需要保留原始顺序时，先创建副本再排序。
+
+### 15.10 平均分没有小数，或录入无效值后跳人
+
+平均分先转换成 double 再除以人数；不要等整数除法完成后才转换。没有数据时也不要直接除以 length。
+
+录入无效成绩时，要重复读取当前学生。第 13 节将范围校验放在读取方法内部，避免外层 for 直接 continue 后递增编号，留下未录入却默认为 0 的位置。
+
+## 16. 本章小结与巩固
+
+### 16.1 核心知识回顾
+
+| 知识点     | 需要记住的内容                                           |
+| ---------- | -------------------------------------------------------- |
+| 数组创建   | 指定元素或指定长度，元素类型一致，长度创建后固定         |
+| 数组变量   | 保存引用，变量赋值不会自动复制数组                       |
+| 下标与长度 | 下标从 0 开始；最后一项为 length - 1；数组用 length      |
+| 默认值     | new 创建的数组元素有默认值，局部变量仍需先赋值           |
+| 遍历       | 读取可用增强 for；需要下标或修改位置时使用普通 for       |
+| 方法       | 可以接收数组参数，也可以返回数组引用                     |
+| 值传递     | 传递引用值的副本，能修改共同数组，不能直接替换调用方引用 |
+| 空数组     | 长度为 0，能遍历，但不能读首项，不等于 null              |
+| 统计       | 求和注意类型；平均分先转换；最大最小值注意初值与空数组   |
+| 查找       | 线性查找返回首个匹配下标，-1 表示没找到                  |
+| 排序与反转 | 排序按大小排列；反转倒置现有顺序；本章实现都修改原数组   |
+| 工具类     | Arrays.toString、copyOf、sort、equals 各有不同职责       |
+
+### 16.2 巩固练习
+
+**练习 1：创建与遍历。** 创建保存 5 个整数的数组，分别使用普通 for 与增强 for 输出。再用下标把每项乘以 2，并确认原数组内容变化。约定整数及翻倍结果不超出 int 范围。
+
+**练习 2：统计整数。** 定义 sum、average、max、min，处理 `{12, -3, 7, 0}`，结果应分别为 16、4.0、12、-3。再验证单元素、全负数、重复值，以及两个 Integer.MAX_VALUE 的总和 4294967294。空数组时，sum 返回 0，其余三项由调用方跳过。
+
+**练习 3：查找与计数。** 对 `{4, 2, 4, 9}` 查找 4、9、7，首个下标应为 0、3、-1。再写 countOccurrences 方法，统计 4、9、7 出现的次数，应为 2、1、0；空数组返回 0。
+
+**练习 4：排序与反转。** 手写冒泡排序和反转，分别验证空数组、单元素、已升序、逆序、重复值、含负数的数组。反转两次应恢复原顺序；升序排序两次，第二次内容应保持不变。
+
+**练习 5：保留原始成绩。** 在第 13 节基础上增加最高分、最低分与查找某个分数的位置。排序时保留原数组，查找结果明确表示原始录入顺序中的下标。验证人数 0、101 后重输，成绩 -1、101 后重输，以及人数为 1 的情况。
+
+**练习 6：解释引用。** 不运行程序，先回答：
+
+- 为什么 `int[] second = first;` 后，通过 second 修改元素会影响 first 看到的内容？
+- 方法中把形参重新赋值为新数组，为什么调用方变量没有一起改变？
+- 两个数组的元素完全一样，为什么 == 仍可能为 false？
+- 为什么空数组可以参与增强 for，却不能读取第 0 项？
+- 为什么 `new int[2][]` 不能马上读取每一行的 length？
+
+<details>
+<summary>展开查看数组与引用的思考题答案</summary>
+
+- 复制的是引用值，两个变量仍引用同一个数组，没有创建元素副本。
+- 形参与调用方变量独立；重新赋值只改变形参自己的引用值。
+- == 比较是否为同一个数组对象，内容相同的两个独立数组仍是不同对象。
+- 遍历发现长度为 0 就不会进入循环体；第 0 项则根本不存在，访问会越界。
+- 只创建了外层数组，行引用默认是 null，需先给各行创建内部数组。
+
+</details>
+
+**选做：筛选及格成绩。** 定义返回 int[] 的 filterPassing 方法，输入均为 0～100 的成绩。先遍历统计及格数量，再创建恰好长度的新数组，第二轮遍历写入及格成绩，并保持原顺序。`{59, 60, 100, 45}` 应返回 `{60, 100}`；全部不及格或输入空数组时返回长度为 0 的数组，原数组不变。
+
+### 16.3 示例使用与后续衔接
+
+本章完整示例已直接放在本文中，可以分别保存为与公开类名一致的 .java 文件运行。例如，将查找示例保存为 LinearSearchDemo.java，使用 JDK 17 执行：
+
+```bash
+javac -encoding UTF-8 LinearSearchDemo.java
+java LinearSearchDemo
+```
+
+上述命令在该文件所在目录执行，适用于本文未带 package 声明的独立示例。放进教学项目的包目录时，应补上匹配的 package 声明，并按项目已有方式运行。
+
+配套教学项目为 [java-study-basic](https://github.com/coder-sunshine/java-study-basic)。当前第五章示例以本文为准，教学仓库尚未补充第五章配套源码。遇到循环边界问题可回看[第三章](/backend/java/basic/ch03-loop/)，遇到参数和返回值问题可回看[第四章](/backend/java/basic/ch04-method/)。
+
+下一章学习类与对象：当一名学生同时需要姓名、年龄、成绩等不同信息时，进一步学习如何把相关数据与行为组织到一起。
