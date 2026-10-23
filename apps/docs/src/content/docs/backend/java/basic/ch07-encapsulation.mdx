@@ -1,0 +1,1430 @@
+---
+title: 第七章：封装、构造方法与静态成员
+description: 基于 JDK 17 学习 private、getter/setter、构造方法重载、this、static 与 final，维护合法对象状态并完成学生信息录入。
+sidebar:
+  label: 第七章：封装、构造方法与静态成员
+  order: 7
+---
+
+第六章已经能创建学生对象，把姓名、年龄、成绩放在一起。但如果字段都是 public，任何使用对象的代码都能直接写入负年龄或 101 分。只把数据放进类，还没有约束对象可以处于哪些状态。
+
+本章进一步学习**把数据隐藏在类内部，通过明确的公开行为维护规则**；再用构造方法完成初始化，区分每个对象各自的数据与所有对象共享的数据。继续使用 **JDK 17**，不引入继承、接口、集合、异常捕获、反射或多线程。
+
+标记为 `java` 的代码块都是完整程序，所需模型已放进同一代码块。每个代码块单独保存在与公开入口类同名的 .java 文件中即可运行；多个示例会重复定义 Student 等模型，运行不同示例时请使用独立目录，不要把它们一次性粘到同一个目录。
+
+## 1. 封装要解决什么问题
+
+### 1.1 数据与规则应放在一起
+
+学生成绩应该处于 0～100。若外部可以直接写 student.score = 101，即使提供了一个校验方法，也仍然可能绕过它。
+
+封装让类决定可以读取哪些数据、可以执行哪些修改，以及修改需要满足什么条件。它不仅是“给每个字段自动生成 getter/setter”，还包括限制不合理操作，例如编号可以读取，却不应该随意修改。
+
+### 1.2 本章统一的数据规则
+
+| 数据     | 合法范围或行为                                    |
+| -------- | ------------------------------------------------- |
+| 姓名     | 非 null、非空字符串、非纯空白；有效姓名按原样保存 |
+| 年龄     | 0～150，包含两个端点                              |
+| 成绩     | 0～100，60 分及格                                 |
+| 修改失败 | 返回 false，保留旧字段值，不打印                  |
+| 修改成功 | 更新字段，返回 true                               |
+
+姓名判断使用 String.isBlank()，该方法从 Java 11 提供，在 JDK 17 可用。它能识别空字符串与纯空白；调用前先判断 null。这里不自动 trim，所以“ 小林 ”合法并保留两侧空格。
+
+getter 返回值，不负责输出；setter 负责验证与更新。这里让 setter 返回 boolean 是本章约定，不是方法名带 set 就自动具有某种行为。
+
+## 2. private 字段与公开访问方法
+
+### 2.1 先读取，再尝试修改
+
+ValidationStudent 的三个字段都为 private。外部只能通过公开方法操作；默认姓名“未命名”、年龄 0、成绩 0 是模型明确选择的合法初始值。
+
+```java
+public class StudentValidationDemo {
+    public static void main(String[] args) {
+        ValidationStudent student = new ValidationStudent();
+        student.printInfo();
+        System.out.println("修改姓名：" + student.setName("小林"));
+        System.out.println("修改年龄：" + student.setAge(20));
+        System.out.println("修改成绩：" + student.setScore(85));
+        student.printInfo();
+        System.out.println("修改 null 姓名：" + student.setName(null));
+        System.out.println("修改空白姓名：" + student.setName("  "));
+        System.out.println("修改年龄 151：" + student.setAge(151));
+        System.out.println("修改成绩 101：" + student.setScore(101));
+        student.printInfo();
+        System.out.println("是否及格：" + student.isPassing());
+    }
+}
+
+class ValidationStudent {
+    private String name = "未命名";
+    private int age = 0;
+    private int score = 0;
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean setName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        this.name = name;
+        return true;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public boolean setAge(int age) {
+        if (age < 0 || age > 150) {
+            return false;
+        }
+        this.age = age;
+        return true;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < 0 || score > 100) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：未命名，年龄：0，成绩：0
+修改姓名：true
+修改年龄：true
+修改成绩：true
+姓名：小林，年龄：20，成绩：85
+修改 null 姓名：false
+修改空白姓名：false
+修改年龄 151：false
+修改成绩 101：false
+姓名：小林，年龄：20，成绩：85
+是否及格：true
+```
+
+这个模型尚未显式定义构造方法，可以用默认无参构造创建，后面再解释构造方法的规则。先观察 setter：检查失败就 return false，只有检查成功才给字段赋值。
+
+### 2.2 为什么要先校验再赋值
+
+从 85 分开始调用 setScore(101)，结果必须同时满足两件事：返回 false，getScore() 仍为 85。只看返回值不足以判断修改正确，错误实现也可能先保存 101，再返回 false。
+
+将成绩依次更新为 -1、0、59、60、100、101，返回 false、true、true、true、true、false；最终成绩为 100。年龄 -1、151 同样应被拒绝，0、150 合法。
+
+### 2.3 private 不表示“只有当前这个对象能访问”
+
+本章顶层类模型的外部代码不能直接访问 private 字段；声明这些字段的类内部可以使用它们，也可以通过另一个同类对象的引用访问其 private 字段。访问限制按类理解，不是给每个对象设置独立的访问密码。
+
+一个文件里有两个并列顶层类，仍然是两个类。StudentValidationDemo 不会因为与 ValidationStudent 同文件，就获得直接访问 private 字段的权限。
+
+### 2.4 不是每个属性都必须有 setter
+
+读取编号是合理操作，但修改编号可能破坏身份约定，因此编号只提供 getter。不要为了方便访问，再放一个同样内容的 public 字段；那会引入两份可能不一致的数据。
+
+本章暂不向外返回可变数组字段。以后若对象持有数组，直接返回内部数组引用也可能让调用方绕过校验修改数据，封装还需要考虑引用是否泄漏。
+
+## 3. this：明确当前对象
+
+### 3.1 字段与形参同名
+
+setName(String name) 的 name 是形参；this.name 是调用该方法的对象字段。this.name = name 表示把参数写入当前对象。若误写 name = name，只是参数自己赋给自己，字段不会更新。
+
+下面用只含姓名的模型集中演示 this，暂不重复年龄和成绩：
+
+```java
+public class ThisKeywordDemo {
+    public static void main(String[] args) {
+        NamedStudent first = new NamedStudent();
+        NamedStudent second = new NamedStudent();
+        first.setName("小林");
+        second.setName("小周");
+
+        System.out.println("修改第一人姓名：" + first.setName("小陈"));
+        System.out.println("第一人姓名：" + first.getName());
+        System.out.println("第二人姓名：" + second.getName());
+        System.out.println("修改 null 姓名：" + first.setName(null));
+        System.out.println("修改空白姓名：" + first.setName("  "));
+        System.out.println("拒绝后姓名：" + first.getName());
+    }
+}
+
+class NamedStudent {
+    private String name = "未命名";
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean setName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        // this.name 是字段，右侧 name 是参数。
+        this.name = name;
+        return true;
+    }
+}
+```
+
+运行结果：
+
+```text
+修改第一人姓名：true
+第一人姓名：小陈
+第二人姓名：小周
+修改 null 姓名：false
+修改空白姓名：false
+拒绝后姓名：小陈
+```
+
+### 3.2 this 不会创建新对象
+
+first 调用 setName 时，this 表示 first 引用的对象；second 调用时则表示 second 引用的对象。this 不是固定某一个学生，也不会复制对象。
+
+没有同名歧义时，在实例方法内可以直接使用字段名。本章在同名赋值处显式使用 this，帮助辨认。静态方法没有“本次调用的当前实例”，不能在其中使用 this。
+
+## 4. 构造方法：创建时初始化对象
+
+### 4.1 与类同名，没有返回类型
+
+构造方法用于创建对象时初始化状态。它与类名完全一致，不写 int、Student 或 void 等返回类型，通过 new Student(...) 调用，不能按普通方法写 student.Student(...)。
+
+下面只是签名说明，不是可以直接编译的声明；实际写 Java 时必须加上方法体：
+
+```text
+public Student()
+public Student(String name)
+public Student(String name, int age, int score)
+```
+
+前两种写法用到的 this(...) 表示委托同类另一个构造方法，第 5 节会解释执行顺序。Student 中的 static final 常量先理解为命名的固定规则，第 9 节再解释关键字。
+
+```java
+public class ConstructorDemo {
+    public static void main(String[] args) {
+        new Student().printInfo();
+        new Student("小林").printInfo();
+        new Student("小周", 19, 90).printInfo();
+        // 本章明确的构造策略：无效属性保留合法初始值，不存入非法参数。
+        new Student(" ", -1, 101).printInfo();
+    }
+}
+
+// 第七章学生模型：构造与后续修改使用相同的校验，拒绝非法状态。
+class Student {
+    public static final int MIN_SCORE = 0;
+    public static final int MAX_SCORE = 100;
+    public static final int PASSING_SCORE = 60;
+    public static final int MAX_AGE = 150;
+
+    // 本章约定：构造参数无效时，该属性保留这里明确设置的初始值。
+    private String name = "未命名";
+    private int age = 0;
+    private int score = 0;
+
+    public Student() {
+        this("未命名", 0, 0);
+    }
+
+    public Student(String name) {
+        this(name, 0, 0);
+    }
+
+    public Student(String name, int age, int score) {
+        setName(name);
+        setAge(age);
+        setScore(score);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean setName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        this.name = name;
+        return true;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public boolean setAge(int age) {
+        if (age < 0 || age > MAX_AGE) {
+            return false;
+        }
+        this.age = age;
+        return true;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < MIN_SCORE || score > MAX_SCORE) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    public boolean isPassing() {
+        return score >= PASSING_SCORE;
+    }
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：未命名，年龄：0，成绩：0
+姓名：小林，年龄：0，成绩：0
+姓名：小周，年龄：19，成绩：90
+姓名：未命名，年龄：0，成绩：0
+```
+
+### 4.2 无参、有参与重载
+
+构造方法按参数数量、类型和顺序区分重载，与第四章普通方法重载的判断方式类似。参数名本身不能区分重载；只把 name 改成 studentName 不能增加一种构造方式。
+
+构造方法不通过 return Student 或 return true 返回结果。new 表达式产生新对象的引用；构造方法完成初始化，这与普通 createStudent 方法声明返回类型再 return 引用不同。
+
+### 4.3 编译器什么时候提供默认构造方法
+
+只有类没有显式声明任何构造方法时，编译器才提供默认无参构造方法。写了一个有参构造方法，就不再自动补无参版本；需要 new Student() 时必须自己定义对应版本。
+
+本例 Student() 是手写的无参构造，不是编译器自动生成的默认构造。构造方法不要求自己声明类中全部字段，也不要求每个版本都重新写一遍赋值。
+
+### 4.4 写上 void 就成了普通方法
+
+下面故意演示一种容易看错的写法。public void MethodStudent(String name) 有返回类型 void，因此是普通方法；MethodStudent 类实际上没有显式构造方法，new MethodStudent() 使用编译器提供的默认无参构造。
+
+```java
+public class ConstructorVsMethodDemo {
+    public static void main(String[] args) {
+        MethodStudent student = new MethodStudent();
+        System.out.println("创建后姓名：" + student.getName());
+        // 只有显式调用，普通方法才执行。
+        student.MethodStudent("小林");
+        System.out.println("手动调用后姓名：" + student.getName());
+    }
+}
+
+class MethodStudent {
+    private String name = "未命名";
+
+    // 故意保留错误命名来辨认语法；它不是构造方法。
+    public void MethodStudent(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+```
+
+运行结果：
+
+```text
+创建后姓名：未命名
+手动调用后姓名：小林
+```
+
+这个示例只用于区分语法，不推荐给普通方法起类名这样的大写名称；正常命名应使用小驼峰，如 setName。也不能把构造方法错误地“修复”为在签名后加分号。
+
+## 5. this(...) 与构造方法委托
+
+### 5.1 同一对象的初始化复用
+
+Student 的无参版本委托 this("未命名", 0, 0)，仅姓名版本委托 this(name, 0, 0)，完整版本统一进行校验。更改初始化规则时，不需要维护三份重复实现。
+
+this.score 与 this(...) 的含义不同：前者访问当前对象字段，后者调用同类的另一个构造方法。以下示例用打印观察调用顺序：
+
+```java
+public class ConstructorChainDemo {
+    public static void main(String[] args) {
+        ChainStudent student = new ChainStudent();
+        System.out.println("最终姓名：" + student.getName());
+    }
+}
+
+class ChainStudent {
+    private String name;
+
+    public ChainStudent() {
+        // JDK 17 中，对同类其他构造方法的调用必须是构造体第一条语句。
+        this("未命名");
+        System.out.println("无参构造：结束");
+    }
+
+    public ChainStudent(String name) {
+        // 本演示只由无参构造传入合法的固定姓名。
+        this.name = name;
+        System.out.println("有参构造：" + name);
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+```
+
+运行结果：
+
+```text
+有参构造：未命名
+无参构造：结束
+最终姓名：未命名
+```
+
+### 5.2 JDK 17 的位置限制
+
+在 **JDK 17** 中，this(...) 必须是构造体的第一条语句。不能先打印或先赋值，再调用它；不能放进普通方法，也不能直接或间接形成循环委托。
+
+执行时先完成被委托的构造方法，再继续当前构造方法剩余代码。这里只有一次 new，只创建一个对象；this(...) 不是第二次创建学生。
+
+本例的实例字段初始化不会因委托层数增加而重复执行。观察初始化过程的打印用于理解执行顺序，实际模型不必每次构造都打印信息。
+
+## 6. 无效构造参数与修改失败的区别
+
+### 6.1 本章明确采用逐字段回退
+
+Student 的字段初始值为“未命名/0/0”，完整构造方法复用 setter。每个无效参数只让对应字段保留初始值，其他有效字段照常保存。这个规则是本章模型的设计选择，不是 Java 自动替所有构造方法提供的校验。
+
+```java
+public class ConstructorFallbackDemo {
+    public static void main(String[] args) {
+        new Student(null, 20, 60).printInfo();
+        new Student("小林", -1, 85).printInfo();
+        new Student("小周", 150, 100).printInfo();
+        new Student("小陈", 151, -1).printInfo();
+    }
+}
+
+// 第七章学生模型：构造与后续修改使用相同的校验，拒绝非法状态。
+class Student {
+    public static final int MIN_SCORE = 0;
+    public static final int MAX_SCORE = 100;
+    public static final int PASSING_SCORE = 60;
+    public static final int MAX_AGE = 150;
+
+    // 本章约定：构造参数无效时，该属性保留这里明确设置的初始值。
+    private String name = "未命名";
+    private int age = 0;
+    private int score = 0;
+
+    public Student() {
+        this("未命名", 0, 0);
+    }
+
+    public Student(String name) {
+        this(name, 0, 0);
+    }
+
+    public Student(String name, int age, int score) {
+        setName(name);
+        setAge(age);
+        setScore(score);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean setName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        this.name = name;
+        return true;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public boolean setAge(int age) {
+        if (age < 0 || age > MAX_AGE) {
+            return false;
+        }
+        this.age = age;
+        return true;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < MIN_SCORE || score > MAX_SCORE) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    public boolean isPassing() {
+        return score >= PASSING_SCORE;
+    }
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：未命名，年龄：20，成绩：60
+姓名：小林，年龄：0，成绩：85
+姓名：小周，年龄：150，成绩：100
+姓名：小陈，年龄：0，成绩：0
+```
+
+### 6.2 创建出对象不代表原始输入全部有效
+
+构造方法不能把三个 setter 的 boolean 作为构造返回值交给调用方。new Student("小林", -1, 85) 已创建合法对象，但原始年龄 -1 没有被接受；得到年龄 0 不等于输入成功。
+
+后面的录入程序先把输入校验到合法，再构造，不用回退值掩盖输入错误。异常章节会介绍用异常明确拒绝无效创建的方式；当前先掌握一致、可解释的初始化规则。
+
+### 6.3 构造回退与修改保留旧值
+
+| 情况                           | 字段最终值                       |
+| ------------------------------ | -------------------------------- |
+| 构造时年龄 -1                  | 保留模型初始年龄 0               |
+| 对 20 岁学生调用 setAge(-1)    | 返回 false，保留原年龄 20        |
+| 对 85 分学生调用 setScore(101) | 返回 false，保留原成绩 85        |
+| 姓名有效、年龄无效、成绩有效   | 只对年龄回退，不丢弃其他有效字段 |
+
+“初始值”和“旧值”对应不同时间点，不要把每次修改失败都实现为重置成默认数据。
+
+## 7. static：共享成员与实例成员
+
+### 7.1 学校名共享，姓名每人一份
+
+SchoolStudent 的 schoolName 是静态字段，name 是实例字段。对于本例同一个已加载的类，学校名由所有学生共享；每名学生的姓名仍单独保存。
+
+```java
+public class StaticMemberDemo {
+    public static void main(String[] args) {
+        SchoolStudent first = new SchoolStudent("小林");
+        SchoolStudent second = new SchoolStudent("小周");
+        first.printInfo();
+        second.printInfo();
+        SchoolStudent.setSchoolName("第二大学");
+        first.printInfo();
+        second.printInfo();
+        System.out.println("学校名：" + SchoolStudent.getSchoolName());
+    }
+}
+
+class SchoolStudent {
+    private static String schoolName = "第一大学";
+    private String name;
+
+    // 调用约定：name 为非 null、非空白的字符串。
+    public SchoolStudent(String name) {
+        this.name = name;
+    }
+
+    public static String getSchoolName() {
+        return schoolName;
+    }
+
+    // 调用约定：schoolName 为非 null、非空白的字符串。
+    public static void setSchoolName(String schoolName) {
+        SchoolStudent.schoolName = schoolName;
+    }
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，学校：" + schoolName);
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林，学校：第一大学
+姓名：小周，学校：第一大学
+姓名：小林，学校：第二大学
+姓名：小周，学校：第二大学
+学校名：第二大学
+```
+
+学校名的公开静态方法通过类名调用，字段本身仍为 private。示例约定传入的姓名、学校名均非 null 且非空白；它聚焦成员归属，不演示完整学校信息校验。
+
+不要把每人的成绩改成 static。static 不表示“更方便调用的实例字段”，而是改变了数据是否由各个对象独立保存。
+
+### 7.2 静态方法没有当前对象
+
+| 场景                                      | 是否允许 | 原因               |
+| ----------------------------------------- | -------- | ------------------ |
+| 实例方法直接访问当前对象字段              | 允许     | 有当前对象         |
+| 实例方法读取静态字段                      | 允许     | 可读取共享规则     |
+| static 方法直接读取未指定对象的实例字段   | 不允许   | 不知道要读哪名学生 |
+| static 方法使用 this                      | 不允许   | 没有当前实例       |
+| static 方法先获得对象，再通过 getter 读取 | 允许     | 明确了要操作的对象 |
+
+main 虽然是 static，也能先 new Student 再调用 student.getScore()。静态方法还可以通过参数接收对象，不是完全不能使用对象。
+
+### 7.3 推荐通过类名访问静态成员
+
+使用 SchoolStudent.getSchoolName() 表达类级数据，使用 student.getName() 表达某个学生的数据。不要通过某个对象引用调用静态方法来模糊两者关系，也不要把 null 引用能否调用静态方法当作日常编码技巧。
+
+## 8. 静态计数与固定实例编号
+
+### 8.1 只有 new 才触发本例的创建计数
+
+CountedStudent 用 private static createdCount 保存累计创建数量，private final id 保存每个对象自己的固定编号。无参构造只委托，计数只在最终的姓名构造方法增加一次。
+
+```java
+public class StaticCounterDemo {
+    public static void main(String[] args) {
+        System.out.println("创建前数量：" + CountedStudent.getCreatedCount());
+        CountedStudent first = new CountedStudent();
+        CountedStudent second = new CountedStudent("小林");
+        CountedStudent alias = first;
+        System.out.println("第一人：" + first.getId() + "，" + first.getName());
+        System.out.println("第二人：" + second.getId() + "，" + second.getName());
+        System.out.println("引用赋值后数量：" + CountedStudent.getCreatedCount());
+        System.out.println("alias 与第一人相同：" + (alias == first));
+    }
+}
+
+class CountedStudent {
+    private static int createdCount = 0;
+    private final int id;
+    private String name;
+
+    public CountedStudent() {
+        this("未命名");
+    }
+
+    public CountedStudent(String name) {
+        createdCount++;
+        this.id = createdCount;
+        this.name = name == null || name.isBlank() ? "未命名" : name;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public static int getCreatedCount() {
+        return createdCount;
+    }
+}
+```
+
+运行结果：
+
+```text
+创建前数量：0
+第一人：1，未命名
+第二人：2，小林
+引用赋值后数量：2
+alias 与第一人相同：true
+```
+
+如果在无参和有参构造中都加一，无参创建就会错误增加两次。alias = first 没有创建对象，不增加计数，也不会获得新编号。
+
+编号是每个对象不同的数据，不能写成 static id。累计数量属于共享数据，不能每个对象都单独声明一个从 0 开始的计数。
+
+### 8.2 final 字段只初始化一次
+
+id 在最终构造方法中赋值，之后不能再给这个字段赋新值，只提供 getId，不提供 setter。final 字段如果没有在声明处赋值，需要保证每条正常完成的构造路径都完成初始化；不能依靠实例字段默认 0 作为最终编号。
+
+private static createdCount 也不提供外部 setter 或清零接口，避免已有编号与计数失去对应。
+
+### 8.3 累计创建数量不是活跃人数
+
+createdCount 表示本例已累计创建多少对象，不是数组中的人数，也不是当前仍被引用的对象数量。把某个引用改成 null 不会自动减计数。
+
+每次单独运行 main 会启动新的 Java 进程，计数从 0 开始；同一进程中同一已加载类的后续创建继续累加。本例限定单线程、少量对象，不处理 int 上限、并发、跨进程编号或持久化，不能直接当作数据库主键生成规则。
+
+## 9. static final 常量与工具类
+
+### 9.1 用名字表达固定规则
+
+public static final int PASSING_SCORE = 60 表示公开的类级固定值。static 决定成员归属，final 限制再次赋值。常量名使用大写与下划线，例如 MIN_SCORE、MAX_SCORE。
+
+不必给每个学生保存一份相同的及格线，也不必在不同方法中反复手写 60。规则改变时应保持校验、及格判断和输入范围一致。
+
+### 9.2 不需要实例状态的工具方法
+
+ScoreRules 不保存某名学生的姓名或成绩，而是接收整数或数组参数来判断。这里的工具类将成绩常量直接写在本例中，保证单文件独立运行；教学项目的工具常量引用 Student 中的统一定义。
+
+```java
+public class StaticUtilityDemo {
+    public static void main(String[] args) {
+        System.out.println("成绩范围：" + ScoreRules.MIN_SCORE + "～" + ScoreRules.MAX_SCORE);
+        System.out.println("及格线：" + ScoreRules.PASSING_SCORE);
+        System.out.println("59 是否及格：" + ScoreRules.isPassing(59));
+        System.out.println("60 是否及格：" + ScoreRules.isPassing(60));
+        System.out.println("101 是否有效：" + ScoreRules.isValidScore(101));
+        System.out.println("101 是否及格：" + ScoreRules.isPassing(101));
+        System.out.println("及格数量：" + ScoreRules.countPassing(new int[] {-1, 59, 60, 100, 101}));
+    }
+}
+
+// 工具类：没有每个学生各自的状态，通过类名调用静态方法。
+class ScoreRules {
+    public static final int MIN_SCORE = 0;
+    public static final int MAX_SCORE = 100;
+    public static final int PASSING_SCORE = 60;
+
+    // 工具类无需创建对象；声明 private 构造方法后，外部不能 new。
+    private ScoreRules() {
+    }
+
+    public static boolean isValidScore(int score) {
+        return score >= MIN_SCORE && score <= MAX_SCORE;
+    }
+
+    // 无效成绩不算及格，101 不能仅因为 >= 60 就返回 true。
+    public static boolean isPassing(int score) {
+        return isValidScore(score) && score >= PASSING_SCORE;
+    }
+
+    // scores 非 null；允许含无效整数，按 isPassing 的规则统计。
+    public static int countPassing(int[] scores) {
+        int count = 0;
+        for (int score : scores) {
+            if (isPassing(score)) {
+                count++;
+            }
+        }
+        return count;
+    }
+}
+```
+
+运行结果：
+
+```text
+成绩范围：0～100
+及格线：60
+59 是否及格：false
+60 是否及格：true
+101 是否有效：false
+101 是否及格：false
+及格数量：2
+```
+
+isPassing(int score) 必须先校验有效范围。101 虽然大于等于 60，却不是合法成绩，不能算及格。countPassing 接受非 null 数组，允许包含无效整数，按同一规则跳过无效值；空数组返回 0，原数组不变。
+
+Student.isPassing() 读取当前对象已经受保护的 score；ScoreRules.isPassing(int) 读取外部传入的整数。前者是实例行为，后者是无实例状态的工具判断，不要混淆数据来源。
+
+### 9.3 private 构造方法阻止外部 new
+
+ScoreRules 显式定义 private ScoreRules()，外部不能创建实例，但仍可访问其公开静态方法。若一个构造方法也不写，编译器反而会提供默认无参构造，不能达到相同效果。
+
+工具方法不读键盘、不打印、不修改数组。private 构造方法不等于“整个类无法使用”，而是限制实例创建入口。
+
+## 10. final 引用不等于对象不可变
+
+### 10.1 限制的是变量重新赋值
+
+```java
+public class FinalReferenceDemo {
+    public static void main(String[] args) {
+        final Student student = new Student("小林", 20, 85);
+        student.setScore(90);
+        System.out.println("final 引用对象的新成绩：" + student.getScore());
+        // student = new Student(); 无法编译，不能给 final 变量重新赋值。
+
+        final int[] scores = {85, 60};
+        scores[0] = 100;
+        System.out.println("final 数组引用的首项：" + scores[0]);
+        // scores = new int[2]; 同样不能编译，但修改元素是允许的。
+    }
+}
+
+// 第七章学生模型：构造与后续修改使用相同的校验，拒绝非法状态。
+class Student {
+    public static final int MIN_SCORE = 0;
+    public static final int MAX_SCORE = 100;
+    public static final int PASSING_SCORE = 60;
+    public static final int MAX_AGE = 150;
+
+    // 本章约定：构造参数无效时，该属性保留这里明确设置的初始值。
+    private String name = "未命名";
+    private int age = 0;
+    private int score = 0;
+
+    public Student() {
+        this("未命名", 0, 0);
+    }
+
+    public Student(String name) {
+        this(name, 0, 0);
+    }
+
+    public Student(String name, int age, int score) {
+        setName(name);
+        setAge(age);
+        setScore(score);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean setName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        this.name = name;
+        return true;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public boolean setAge(int age) {
+        if (age < 0 || age > MAX_AGE) {
+            return false;
+        }
+        this.age = age;
+        return true;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < MIN_SCORE || score > MAX_SCORE) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    public boolean isPassing() {
+        return score >= PASSING_SCORE;
+    }
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+}
+```
+
+运行结果：
+
+```text
+final 引用对象的新成绩：90
+final 数组引用的首项：100
+```
+
+student 不能重新赋为另一个学生引用，但调用 student.setScore(90) 没有改变该变量保存的引用，只修改对象内部状态，因此允许。
+
+scores 不能重新赋为另一数组引用，scores[0] = 100 修改的是数组位置，同样允许。不要把 final 数组引用理解为只读数组。
+
+### 10.2 private、static 与 final 各管什么
+
+| 关键字  | 主要作用         | 不会自动做到的事               |
+| ------- | ---------------- | ------------------------------ |
+| private | 限制外部直接访问 | 不会自动校验字段值             |
+| static  | 表示类级共享成员 | 不会把共享数据自动变成固定值   |
+| final   | 限制变量重复赋值 | 不会自动冻结引用对象的内部状态 |
+
+private final int id 的整数值不能改变；final Student 的引用不能改变，但 Student 的合法公开修改行为仍可执行。本章只讨论 final 变量，不展开 final 类或方法。
+
+## 11. 封装与构造重载的另一个例子：矩形
+
+### 11.1 整数边长与合法初始值
+
+为了集中观察封装与重载，下例采用整数边长 0～10000，零边长合法；初始长宽为 1。无参构造委托 1/1，单边长构造委托 side/side，两边长构造复用校验方法。
+
+无效构造参数只让对应边长保留 1；无效修改保留已有边长。该范围内面积和周长都能用 int 保存，不涉及 double 的 NaN 或无穷大。
+
+```java
+public class RectangleEncapsulationDemo {
+    public static void main(String[] args) {
+        EncapsulatedRectangle first = new EncapsulatedRectangle();
+        EncapsulatedRectangle square = new EncapsulatedRectangle(3);
+        EncapsulatedRectangle third = new EncapsulatedRectangle(4, 2);
+        System.out.println("默认矩形面积：" + first.area());
+        System.out.println("正方形面积：" + square.area());
+        System.out.println("长方形周长：" + third.perimeter());
+        System.out.println("修改宽为 0：" + third.setWidth(0));
+        System.out.println("修改宽为 -1：" + third.setWidth(-1));
+        System.out.println("最终长宽：" + third.getLength() + "，" + third.getWidth());
+        System.out.println("最终面积：" + third.area());
+        EncapsulatedRectangle fallback = new EncapsulatedRectangle(-1, 3);
+        System.out.println("无效长参数后的长宽：" + fallback.getLength() + "，" + fallback.getWidth());
+    }
+}
+
+class EncapsulatedRectangle {
+    public static final int MIN_SIDE = 0;
+    public static final int MAX_SIDE = 10000;
+    private int length = 1;
+    private int width = 1;
+
+    public EncapsulatedRectangle() {
+        this(1, 1);
+    }
+
+    public EncapsulatedRectangle(int side) {
+        this(side, side);
+    }
+
+    public EncapsulatedRectangle(int length, int width) {
+        setLength(length);
+        setWidth(width);
+    }
+
+    public int getLength() {
+        return length;
+    }
+
+    public boolean setLength(int length) {
+        if (length < MIN_SIDE || length > MAX_SIDE) {
+            return false;
+        }
+        this.length = length;
+        return true;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public boolean setWidth(int width) {
+        if (width < MIN_SIDE || width > MAX_SIDE) {
+            return false;
+        }
+        this.width = width;
+        return true;
+    }
+
+    public int area() {
+        return length * width;
+    }
+
+    public int perimeter() {
+        return 2 * (length + width);
+    }
+}
+```
+
+运行结果：
+
+```text
+默认矩形面积：1
+正方形面积：9
+长方形周长：12
+修改宽为 0：true
+修改宽为 -1：false
+最终长宽：4，0
+最终面积：0
+无效长参数后的长宽：1，3
+```
+
+### 11.2 计算使用对象当前状态
+
+area() 使用当前 length 与 width，perimeter() 同理。通过合法 setter 改宽后，再次计算使用新状态，无需在外部维护另一份长宽。
+
+验证 0/0 → 面积 0、周长 0；2/3 → 6、10；10000/10000 → 100000000、40000。修改一名矩形对象不影响另一个独立对象。
+
+## 12. 对象数组如何使用封装后的模型
+
+构造每个学生时直接传入完整信息。外部通过 getter 读取，通过 setter 修改，通过 isPassing 判断，通过 printInfo 输出，不访问 private 字段。
+
+```java
+public class StudentArrayDemo {
+    public static void main(String[] args) {
+        Student[] students = {
+            new Student("小林", 20, 85),
+            new Student("小周", 19, 59),
+            new Student("小陈", 20, 60)
+        };
+        students[1].setScore(60);
+        long total = 0;
+        int passing = 0;
+        for (Student student : students) {
+            student.printInfo();
+            total += student.getScore();
+            if (student.isPassing()) {
+                passing++;
+            }
+        }
+        System.out.println("平均分：" + (double) total / students.length);
+        System.out.println("及格人数：" + passing);
+    }
+}
+
+// 第七章学生模型：构造与后续修改使用相同的校验，拒绝非法状态。
+class Student {
+    public static final int MIN_SCORE = 0;
+    public static final int MAX_SCORE = 100;
+    public static final int PASSING_SCORE = 60;
+    public static final int MAX_AGE = 150;
+
+    // 本章约定：构造参数无效时，该属性保留这里明确设置的初始值。
+    private String name = "未命名";
+    private int age = 0;
+    private int score = 0;
+
+    public Student() {
+        this("未命名", 0, 0);
+    }
+
+    public Student(String name) {
+        this(name, 0, 0);
+    }
+
+    public Student(String name, int age, int score) {
+        setName(name);
+        setAge(age);
+        setScore(score);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean setName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        this.name = name;
+        return true;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public boolean setAge(int age) {
+        if (age < 0 || age > MAX_AGE) {
+            return false;
+        }
+        this.age = age;
+        return true;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < MIN_SCORE || score > MAX_SCORE) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    public boolean isPassing() {
+        return score >= PASSING_SCORE;
+    }
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林，年龄：20，成绩：85
+姓名：小周，年龄：19，成绩：60
+姓名：小陈，年龄：20，成绩：60
+平均分：68.33333333333333
+及格人数：3
+```
+
+本例数组非 null、长度至少 1、每项已有学生，所以能直接统计与计算平均分。封装没有改变对象数组的引用规则：共享同一学生引用时，通过 setter 进行的修改仍会被其他引用看到。
+
+private 也不会自动解决数组中的 null 项。若需要允许预留空位置，应像[第六章](/backend/java/basic/ch06-object/)一样先判断，再按实际人数统计。
+
+## 13. 综合示例：校验输入后创建学生
+
+### 13.1 先验证业务输入，再调用构造方法
+
+程序读取人数、每人的姓名、年龄与成绩，创建独立学生对象，然后输出所有信息、平均分、及格人数与首个最高分学生。
+
+| 方法或位置                            | 职责                                                         |
+| ------------------------------------- | ------------------------------------------------------------ |
+| main                                  | 拥有唯一 Scanner，安排录入、构造、报告，最后关闭输入工具     |
+| readInRange                           | 提示并读取整数，业务范围错误重复当前项；`minimum <= maximum` |
+| Student 构造方法                      | 按统一校验建立对象状态                                       |
+| getter、isPassing、printInfo          | 读取数据、判断及格、输出学生信息                             |
+| average、countPassing、findTopStudent | 只计算或查找，不读取键盘、不打印、不修改数据                 |
+
+输入约定完整：人数与年龄、成绩均符合 int 类型；姓名用 next() 读取一个不含空白的词。不混用 nextLine()，不支持含空格姓名；非数字输入、超出 int 范围的数字和输入提前结束留到异常章节处理。
+
+人数 1～100，年龄 0～150，成绩 0～100。每项错误只重输当前项，不重复读取已合法的姓名或年龄，不提前进入下一名；全部合法后才 new Student。
+
+```java
+import java.util.Scanner;
+
+public class StudentInputDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int count = readInRange(scanner, "请输入人数（1～100）：", 1, 100);
+        Student[] students = new Student[count];
+        for (int i = 0; i < students.length; i++) {
+            System.out.println("请输入第 " + (i + 1) + " 名学生的姓名（不含空格）：");
+            String name = scanner.next();
+            int age = readInRange(scanner, "请输入年龄（0～150）：", 0, Student.MAX_AGE);
+            int score = readInRange(scanner, "请输入成绩（0～100）：", Student.MIN_SCORE, Student.MAX_SCORE);
+            students[i] = new Student(name, age, score);
+        }
+        for (Student student : students) {
+            student.printInfo();
+        }
+        System.out.println("平均分：" + average(students));
+        System.out.println("及格人数：" + countPassing(students));
+        Student top = findTopStudent(students);
+        System.out.println("最高分学生：" + top.getName() + "，成绩：" + top.getScore());
+        scanner.close();
+    }
+
+    // 输入完整且整数项符合 int 类型；minimum <= maximum，scanner 非 null。
+    public static int readInRange(Scanner scanner, String prompt, int minimum, int maximum) {
+        while (true) {
+            System.out.println(prompt);
+            int value = scanner.nextInt();
+            if (value >= minimum && value <= maximum) {
+                return value;
+            }
+            System.out.println("输入超出范围，请重新输入。");
+        }
+    }
+
+    // 数组非 null，所有项均为已创建的学生；average 和 findTopStudent 要求至少一项。
+    public static double average(Student[] students) {
+        long total = 0;
+        for (Student student : students) {
+            total += student.getScore();
+        }
+        return (double) total / students.length;
+    }
+
+    public static int countPassing(Student[] students) {
+        int count = 0;
+        for (Student student : students) {
+            if (student.isPassing()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static Student findTopStudent(Student[] students) {
+        Student top = students[0];
+        for (int i = 1; i < students.length; i++) {
+            if (students[i].getScore() > top.getScore()) {
+                top = students[i];
+            }
+        }
+        return top;
+    }
+}
+
+// 第七章学生模型：构造与后续修改使用相同的校验，拒绝非法状态。
+class Student {
+    public static final int MIN_SCORE = 0;
+    public static final int MAX_SCORE = 100;
+    public static final int PASSING_SCORE = 60;
+    public static final int MAX_AGE = 150;
+
+    // 本章约定：构造参数无效时，该属性保留这里明确设置的初始值。
+    private String name = "未命名";
+    private int age = 0;
+    private int score = 0;
+
+    public Student() {
+        this("未命名", 0, 0);
+    }
+
+    public Student(String name) {
+        this(name, 0, 0);
+    }
+
+    public Student(String name, int age, int score) {
+        setName(name);
+        setAge(age);
+        setScore(score);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public boolean setName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        this.name = name;
+        return true;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public boolean setAge(int age) {
+        if (age < 0 || age > MAX_AGE) {
+            return false;
+        }
+        this.age = age;
+        return true;
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < MIN_SCORE || score > MAX_SCORE) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    public boolean isPassing() {
+        return score >= PASSING_SCORE;
+    }
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+}
+```
+
+输入（人数、第一人年龄、第一人成绩各错一次）：
+
+```text
+0
+2
+小林
+-1
+20
+101
+85
+小周
+19
+60
+```
+
+输出（不含用户输入回显）：
+
+```text
+请输入人数（1～100）：
+输入超出范围，请重新输入。
+请输入人数（1～100）：
+请输入第 1 名学生的姓名（不含空格）：
+请输入年龄（0～150）：
+输入超出范围，请重新输入。
+请输入年龄（0～150）：
+请输入成绩（0～100）：
+输入超出范围，请重新输入。
+请输入成绩（0～100）：
+请输入第 2 名学生的姓名（不含空格）：
+请输入年龄（0～150）：
+请输入成绩（0～100）：
+姓名：小林，年龄：20，成绩：85
+姓名：小周，年龄：19，成绩：60
+平均分：72.5
+及格人数：2
+最高分学生：小林，成绩：85
+```
+
+### 13.2 统计方法的调用约定
+
+所有数组参数非 null，每项都已创建学生。average、findTopStudent 要求数组至少一项；countPassing 也接受空数组并返回 0。main 通过人数下限与完整录入满足统计前提，不用假学生填空位。
+
+总分使用 long 累加，除法前转 double。findTopStudent 从首项开始，只在成绩更高时更新引用，因此并列最高分保留最先录入者。它返回数组中已有学生的引用，不排序、不复制对象。
+
+### 13.3 可以验证的边界
+
+每行是一组独立运行的完整输入：
+
+| 输入                         | 应观察到的结果                                       |
+| ---------------------------- | ---------------------------------------------------- |
+| `1 小林 0 0`                 | 年龄与成绩下界合法，平均分 0.0，及格 0，最高分小林/0 |
+| `1 小林 150 100`             | 年龄与成绩上界合法，平均分 100.0，及格 1             |
+| `2 小林 20 59 小周 19 60`    | 平均分 59.5，及格 1，最高分小周                      |
+| `2 小林 20 60 小周 19 60`    | 平均分 60.0，及格 2，并列保留小林                    |
+| `101 1 小林 20 60`           | 人数先重输一次，合法后才创建数组                     |
+| `1 小林 -1 151 20 -1 101 60` | 年龄重输两次、成绩重输两次，姓名仅读取一次           |
+
+再录入 100 人，每人年龄 20、成绩 100：平均分 100.0，及格 100 人，最高分取首人。检查每人对象独立，统计前后原顺序与字段值不变。
+
+## 14. 常见错误与排查
+
+### 14.1 字段改为 private 后又改回 public
+
+外部访问失败正是在发挥封装作用。应使用允许的公开方法，不是撤销访问限制；如果缺少必要操作，应明确添加合理行为。
+
+### 14.2 setter 返回成功但字段没变
+
+检查是否把 this.score = score 写成 score = score。后者可能编译通过，却只操作同名参数。验证返回值后，还要读取字段确认实际变化。
+
+### 14.3 先存入非法值再检查
+
+检查失败应直接结束，不覆盖旧数据。也不能在更新失败时重置为默认 0；默认构造状态与已有学生的旧成绩是两回事。
+
+### 14.4 给构造方法写返回类型
+
+public void Student(...) 是普通方法，不会因为 new Student() 就自动执行。构造方法不写返回类型，也不能只在签名后补分号。
+
+### 14.5 以为无参构造总是存在
+
+写了任何构造方法后，编译器就不再提供默认无参构造。检查 new 使用的参数是否对应已有重载，需要无参就显式声明。
+
+### 14.6 this(...) 不在第一行或出现循环
+
+JDK 17 要求 this(...) 是构造体第一条语句。无参版本与有参版本互相委托会形成递归构造调用，编译无法通过；必须有一个最终负责初始化的版本。
+
+### 14.7 将每人的成绩写成 static
+
+成绩属于每个学生，应是实例字段。若改成 static，不同学生会共享这一个字段；同时也要检查是否只是多个引用指向同一对象。
+
+### 14.8 静态方法直接使用 this 或实例字段
+
+静态方法没有当前实例。需要访问某个学生时，先创建或接收对象，再通过它的公开方法读取，不随意把相关字段都改成 static。
+
+### 14.9 构造链计数增加两次
+
+只在最终构造实现中增加一次。引用赋值不算创建对象，不能把数组位置数量或引用变量数量当成累计创建数量。
+
+### 14.10 误以为 final 对象不能修改
+
+final 限制引用变量重新赋值，不限制对象所有内部变化。能否改分还取决于对象是否提供合法修改行为，不由 final 引用单独决定。
+
+### 14.11 101 分仍被统计为及格
+
+接收外部整数的工具方法应先判断有效范围。对象内成绩受 setter 与构造保护，不代表任意整数参数都已经有效。
+
+### 14.12 把回退值当成用户输入成功
+
+构造回退保证当前模型的字段合法，并没有告诉用户原始参数有效。需要重输的交互，在构造前完成输入校验，不能忽略 setter 的失败结果。
+
+## 15. 知识回顾与巩固
+
+### 15.1 核心知识
+
+| 知识点        | 需要记住的内容                                          |
+| ------------- | ------------------------------------------------------- |
+| 封装          | 隐藏字段，明确操作入口与校验规则                        |
+| getter/setter | 读取与修改分工；失败保留旧值，不是所有字段都要有 setter |
+| this.字段     | 区分当前对象字段与同名参数                              |
+| 构造方法      | 与类同名，没有返回类型，创建时完成初始化                |
+| 默认构造      | 没有显式声明任何构造方法时才自动提供                    |
+| this(...)     | 委托同类其他构造；JDK 17 中放第一条语句                 |
+| static        | 表示类级成员，不属于某个当前实例                        |
+| 创建计数      | 构造链只加一次，引用赋值不增加                          |
+| final         | 变量不能重赋；引用对象仍可能可变                        |
+| 工具类        | 可用私有构造方法限制外部创建，通过类名调用静态行为      |
+
+### 15.2 巩固练习
+
+**练习 1：学生校验。** 定义 private name、age、score 与 getter/setter，初始状态“未命名/0/0”。合法修改返回 true，无效返回 false 且保留旧值。测试 null、空字符串、空白姓名，年龄 -1/0/150/151，成绩 -1/0/59/60/100/101。
+
+**练习 2：构造重载。** 定义无参、仅姓名、完整三参数构造，无参与仅姓名版本委托完整版本，完整版本复用 setter。验证“小林/-1/85”得到“小林/0/85”，null/20/60 得到“未命名/20/60”，再确认无效修改保留已有值。
+
+**练习 3：封装矩形。** private 整数长宽初始为 1，范围 0～10000，提供无参、正方形和长方形三种构造，getter、校验 setter、面积和周长。验证 0/0、2/3、10000/10000，以及非法构造参数 -1/3 回退到 1/3。
+
+**练习 4：固定编号。** private static 计数与 private final 实例编号，编号仅在最终构造实现中分配一次，公开 getter，不提供外部改号或清零接口。new 三人编号依次 1/2/3；引用赋值不增加计数，再创建第四人也不能改变前三人的编号。
+
+**练习 5：封装后的录入。** 独立实现人数、姓名、年龄、成绩录入，先校验后构造，通过公开行为统计。验证重复错误仍停留当前项、单人、59/60、0/100 与并列最高分，返回首人已有引用，不排序。
+
+**选做：成绩工具类。** 定义成绩常量、私有构造方法和静态有效性/及格/计数方法。对 {-1, 0, 59, 60, 100, 101} 返回及格数量 2；空数组为 0；原数组不变，不能把 101 当作及格。
+
+### 15.3 语法与对象状态思考题
+
+- 为什么只有 getter/setter、没有校验，不一定能保护合法状态？
+- 为什么 name = name 可能编译通过却没有更新对象？
+- public void Student() 为什么不会在 new Student() 时自动执行？
+- 只写一个有参构造方法后，为什么 new Student() 可能无法编译？
+- this(...) 会创建第二个对象吗？计数应该放在哪里？
+- static 方法为什么不能使用 this，却能接收一个 Student 参数？
+- private、static、final 各自解决什么问题？
+- final Student student 为什么还能调用 setScore？
+- 无效构造参数回退为 0，是否代表用户输入了合法的 0？
+
+<details>
+<summary>展开查看封装、构造与静态成员的思考题答案</summary>
+
+- 若 setter 原样接收任意值，仍能把对象改成非法状态；入口需要维护规则。
+- 两侧都指向同一个参数，没有写入 this.name 字段。
+- 它有 void 返回类型，是普通方法，只有显式调用才执行。
+- 显式声明构造后，编译器不再自动提供默认无参版本。
+- 不会。它复用同一对象的初始化，计数只在最终构造实现中增加一次。
+- static 没有当前实例，但可以通过显式传入的对象引用访问公开行为。
+- private 限制访问，static 决定成员归属，final 限制变量重赋，三者不能互相替代。
+- 引用没有改变，修改的是该引用对象内部由公开行为允许改变的状态。
+- 不代表。回退是模型的处理策略，交互仍应先验证原始输入是否有效。
+
+</details>
+
+### 15.4 运行方式与教学项目对应
+
+把任意完整 Java 代码块保存为与公开入口类同名的文件，例如 StudentValidationDemo.java。在该文件目录用 JDK 17 执行：
+
+```bash
+javac -encoding UTF-8 --release 17 StudentValidationDemo.java
+java StudentValidationDemo
+```
+
+模型已放在同一代码块中，不用另外查找文件。多个示例重复使用 Student 等类名，运行另一段时应使用独立目录，避免重复类定义或旧模型被覆盖。
+
+配套项目为 [java-study-basic](https://github.com/coder-sunshine/java-study-basic)。本文按知识点组织，部分示例简化模型或将模型合并为单文件；本地教学项目将 Student 与 ScoreRules 分文件保存，并包含相应 package 声明。
+
+| 内容                                             | 教学项目位置（相对项目根目录）              |
+| ------------------------------------------------ | ------------------------------------------- |
+| 封装、this、构造、静态成员、常量、数组与录入演示 | src/basic/chapter07encapsulation/examples/  |
+| 五道必做题与一道工具类选做题骨架                 | src/basic/chapter07encapsulation/exercises/ |
+| 独立尝试后对照的参考答案                         | src/basic/chapter07encapsulation/solutions/ |
+| 题目、调用约定与完整交互说明                     | exercises/chapter07.md                      |
+
+上表是本地目录对应关系；GitHub 页面内容以已推送版本为准。对象与引用可回看[第六章](/backend/java/basic/ch06-object/)，数组边界可回看[第五章](/backend/java/basic/ch05-array/)。
+
+下一章学习继承、重写、多态、抽象类与接口，进一步了解如何让不同类型的对象通过共同约定参与同一类任务。
