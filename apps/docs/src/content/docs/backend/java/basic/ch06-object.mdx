@@ -1,0 +1,1291 @@
+---
+title: 第六章：类与对象
+description: 基于 JDK 17 学习类、对象、实例属性与方法、引用和值传递，使用对象数组组织学生信息并完成统计与录入。
+sidebar:
+  label: 第六章：类与对象
+  order: 6
+---
+
+第五章用数组保存一组成绩。如果还要保存每名学生的姓名、年龄，仅有一个 int 数组就不够了。本章学习定义类，把**一名学生的数据和相关行为组织到一个对象中**，再通过对象数组保存多名学生。
+
+继续使用 **JDK 17**。标记为 `java` 的代码块都是完整程序，每个代码块单独保存为与公开类名一致的 .java 文件即可运行。为便于复制，入口类和模型类写在同一文件中；不要把本文所有示例一次性粘到一个目录中，因为多个示例会重复定义 Student。项目中的分文件方式见文末。
+
+本章先直接访问实例属性，不显式定义构造方法；封装、构造方法、this 与 static 的系统用法留到下一章。main 与流程辅助方法沿用 public static，模型的实例方法不加 static。暂不使用继承、集合、Stream 或异常捕获。
+
+## 1. 从一组成绩到一名学生
+
+### 1.1 为什么需要把相关数据放在一起
+
+分别使用 names、ages、scores 三个数组时，必须约定同一下标表示同一人。若只调整成绩数组顺序，姓名与成绩就会错配。
+
+Student 类把一名学生的姓名、年龄、成绩放在一起。表示同一个人的数据属于同一个对象；需要处理多个人时，再用 Student[] 保存对象引用。类并没有替代数组，两者解决的问题不同。
+
+### 1.2 类、对象、引用与成员
+
+| 概念                 | 含义                                       | 示例                     |
+| -------------------- | ------------------------------------------ | ------------------------ |
+| 类                   | 定义一种类型，描述对象可以有哪些数据与行为 | Student                  |
+| 对象（实例）         | 按类创建的具体实体                         | new Student() 创建的学生 |
+| 引用变量             | 保存对象引用的变量，也可以保存 null        | Student student          |
+| 实例属性（实例字段） | 每个对象各自保存的数据                     | name、age、score         |
+| 实例方法             | 通过对象调用，使用该对象的数据完成任务     | printInfo()、isPassing() |
+
+Student 是类型名，student 是变量名，两者不能混为一谈。数组本身也是对象；本章是在已有引用概念上学习自定义类型。
+
+## 2. 定义类并创建对象
+
+### 2.1 第一个学生对象
+
+下面有两个并列的顶层类：公开的 StudentObjectDemo 提供 main，Student 定义学生模型。一个文件只放一个 public 顶层类，因此保存为 StudentObjectDemo.java；Student 类声明前不写 public，不影响同一包内入口类创建它。
+
+```java
+public class StudentObjectDemo {
+    public static void main(String[] args) {
+        Student student = new Student();
+        student.name = "小林";
+        student.age = 20;
+        student.score = 85;
+
+        System.out.println("姓名：" + student.name);
+        System.out.println("年龄：" + student.age);
+        System.out.println("成绩：" + student.score);
+        student.printInfo();
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林
+年龄：20
+成绩：85
+姓名：小林，年龄：20，成绩：85
+```
+
+属性写在类内、方法外，方法不能嵌套定义在 main 中。Student 不需要 main：模型描述学生，入口类负责创建和使用它。
+
+这里模型中的 public 属性用于直接演示访问，并不能阻止外部写入不合理的数据。下一章再通过 private 与访问方法保护对象状态。
+
+### 2.2 声明、创建与赋值分别发生了什么
+
+以 `Student student = new Student();` 为例：
+
+1. Student 指定变量类型，student 是引用变量。
+2. new Student() 创建一个学生对象，得到指向它的引用。
+3. 赋值把引用保存到 student 变量中。
+4. student.name 访问它所指学生的属性，student.printInfo() 调用它的实例方法。
+
+下面只展示语法片段，不是完整文件：
+
+```text
+Student student;                  // 只声明局部变量，尚未赋值。
+student = new Student();          // 创建对象，再把引用赋给变量。
+student.score = 85;               // 修改这个对象的成绩。
+student.printInfo();              // 调用这个对象的实例方法。
+```
+
+声明引用变量不会自动创建学生。也不要写 Student.student 或把 new Student() 误当成“声明了一个叫 Student 的变量”。
+
+### 2.3 当前为什么可以使用 new Student()
+
+本例没有声明任何构造方法，编译器会提供默认无参构造方法，因此可以写 new Student()。这不代表所有 Java 类总有无参构造方法；下一章显式定义构造方法后，需要重新判断可用的创建方式。
+
+createStudent 这样的普通方法与构造方法也不同：普通方法可以声明返回类型并用 return 返回引用，构造方法的写法留到下一章。
+
+## 3. 默认值、局部变量与 null
+
+### 3.1 实例属性有默认值
+
+```java
+public class ObjectDefaultValueDemo {
+    public static void main(String[] args) {
+        Student student = new Student();
+        System.out.println("默认姓名：" + student.name);
+        System.out.println("默认年龄：" + student.age);
+        System.out.println("默认成绩：" + student.score);
+
+        Student missingStudent = null;
+        System.out.println("尚未引用学生对象：" + (missingStudent == null));
+        // missingStudent.printInfo(); 会发生空指针异常，这里先不执行。
+        // Student local; System.out.println(local); 则无法通过编译。
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+默认姓名：null
+默认年龄：0
+默认成绩：0
+尚未引用学生对象：true
+```
+
+| 属性类型                        | 默认值                       |
+| ------------------------------- | ---------------------------- |
+| byte、short、int、long          | 0                            |
+| float、double                   | 0.0                          |
+| boolean                         | false                        |
+| char                            | 数值为 0 的字符，即 `\u0000` |
+| String、Student、数组等引用类型 | null                         |
+
+默认姓名不是空字符串 ""，也不是文本 "null"。println 拼接引用时把 null 显示为文字，不代表它已成为字符串对象。默认成绩 0 也不能证明已经录入成绩。
+
+### 3.2 三种状态的区别
+
+| 写法（位于方法内）                 | 是否创建学生         | 是否能读取 score                    |
+| ---------------------------------- | -------------------- | ----------------------------------- |
+| `Student student;`                 | 否，局部变量尚未赋值 | 不能读取变量，编译失败              |
+| `Student student = null;`          | 否，变量保存空引用   | 访问属性会产生 NullPointerException |
+| `Student student = new Student();` | 是                   | 可以，未显式赋值时为 0              |
+
+对象的属性有默认值，方法内的局部变量仍必须先赋值才能读取。student 变量与它所指对象里的 score 字段是不同事物。
+
+### 3.3 先判断引用，再使用对象
+
+null 表示没有引用对象。对 null 访问实例属性或调用实例方法会产生空指针异常。本章先学会检查来源与判断条件，不使用 try-catch 掩盖漏创建对象的问题。
+
+可以先判断 `student != null` 再调用。使用 `student != null && student.isPassing()` 时，短路规则会在左侧为 false 后跳过右侧；如果颠倒判断顺序，仍可能先访问到 null。
+
+## 4. 多个对象与实例属性
+
+### 4.1 两次 new 创建两个不同对象
+
+```java
+public class MultipleObjectsDemo {
+    public static void main(String[] args) {
+        Student first = new Student();
+        first.name = "小林";
+        first.age = 20;
+        first.score = 85;
+
+        Student second = new Student();
+        second.name = "小周";
+        second.age = 19;
+        second.score = 59;
+
+        second.score = 60;
+        first.printInfo();
+        second.printInfo();
+        System.out.println("是否同一个对象：" + (first == second));
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林，年龄：20，成绩：85
+姓名：小周，年龄：19，成绩：60
+是否同一个对象：false
+```
+
+first 与 second 分别指向不同学生，各自拥有 name、age、score。给 second.score 赋值不会修改 first 的成绩。即使两个对象的全部属性相同，只要分别创建，它们仍是不同对象。
+
+实例属性不要随意加 static。把学生成绩改成静态字段会失去“每个学生自己的成绩”这一模型含义；static 的共享规则下一章再展开。
+
+### 4.2 对象状态会随着赋值改变
+
+对象状态是某一时刻各属性的值。修改成绩后，引用变量仍可以指向同一对象，只是对象当前保存的数据变化。不要每次修改一个属性都重新创建对象，也不要把变量名当作对象身份。
+
+## 5. 实例方法：让对象使用自己的数据
+
+### 5.1 根据调用对象判断及格
+
+```java
+public class InstanceMethodDemo {
+    public static void main(String[] args) {
+        Student first = new Student();
+        first.name = "小林";
+        first.age = 20;
+        first.score = 59;
+
+        Student second = new Student();
+        second.name = "小周";
+        second.age = 19;
+        second.score = 60;
+
+        first.printInfo();
+        System.out.println("小林是否及格：" + first.isPassing());
+        second.printInfo();
+        System.out.println("小周是否及格：" + second.isPassing());
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林，年龄：20，成绩：59
+小林是否及格：false
+姓名：小周，年龄：19，成绩：60
+小周是否及格：true
+```
+
+isPassing() 没有 score 参数，但并不是没有输入数据：它读取调用对象已有的 score 属性。first.isPassing() 与 second.isPassing() 执行同一份方法逻辑，使用的是不同对象的成绩。
+
+printInfo 返回 void，负责输出；isPassing 返回 boolean，负责判断。返回结果与打印结果仍然不同，可以用 isPassing 的返回值继续参与 if 或计数。
+
+### 5.2 与第四章静态辅助方法的关系
+
+| 比较项           | 静态辅助方法                               | 实例方法                    |
+| ---------------- | ------------------------------------------ | --------------------------- |
+| 签名示意         | public static boolean isPassing(int score) | public boolean isPassing()  |
+| 数据来源         | 调用时传入的 score                         | 本次调用对象的 score 属性   |
+| 调用示意         | 在声明它的类内调用 isPassing(60)           | student.isPassing()         |
+| 是否需要学生对象 | 不需要                                     | 需要可用的 Student 对象引用 |
+
+签名只是说明，真实 Java 方法要有完整方法体，不能只在方法头后补分号。不能从 static 的 main 中直接使用没有所属对象的实例属性；可以先 new 对象，再通过引用调用实例方法。
+
+### 5.3 用矩形对象组织计算
+
+```java
+public class RectangleObjectDemo {
+    public static void main(String[] args) {
+        Rectangle rectangle = new Rectangle();
+        rectangle.length = 3.5;
+        rectangle.width = 2;
+        System.out.println("面积：" + rectangle.area());
+        System.out.println("周长：" + rectangle.perimeter());
+        rectangle.width = 4;
+        System.out.println("修改宽后的面积：" + rectangle.area());
+    }
+}
+
+// 第二个模型：把计算行为放在拥有长和宽的对象中。
+class Rectangle {
+    // 本例约定长、宽为非负且有限的数，计算结果在 double 的有限范围内。
+    public double length;
+    public double width;
+
+    public double area() {
+        return length * width;
+    }
+
+    public double perimeter() {
+        return 2 * (length + width);
+    }
+}
+```
+
+运行结果：
+
+```text
+面积：7.0
+周长：11.0
+修改宽后的面积：14.0
+```
+
+area() 和 perimeter() 使用当前矩形的长宽。改变 width 后再次调用，得到当前状态对应的计算结果，无需每次重复传入两个属性。
+
+本例约定长宽非负且有限，计算结果在 double 的有限范围内；零长或零宽合法，不额外处理负数、NaN 或无穷大。
+
+## 6. 对象引用、赋值与 ==
+
+### 6.1 复制引用不等于复制对象
+
+```java
+public class ObjectReferenceDemo {
+    public static void main(String[] args) {
+        Student first = new Student();
+        first.name = "小林";
+        first.score = 85;
+        Student alias = first;
+        alias.score = 90;
+        System.out.println("first 的成绩：" + first.score);
+        System.out.println("first 与 alias 是否同一对象：" + (first == alias));
+
+        Student other = new Student();
+        other.name = first.name;
+        other.score = first.score;
+        System.out.println("成绩是否相同：" + (first.score == other.score));
+        System.out.println("first 与 other 是否同一对象：" + (first == other));
+
+        alias = null;
+        System.out.println("alias 是否为 null：" + (alias == null));
+        System.out.println("first 仍可读取成绩：" + first.score);
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+first 的成绩：90
+first 与 alias 是否同一对象：true
+成绩是否相同：true
+first 与 other 是否同一对象：false
+alias 是否为 null：true
+first 仍可读取成绩：90
+```
+
+`Student alias = first;` 只复制引用值，没有 new，也没有创建第二名学生。first 与 alias 都指向同一个对象，alias.score = 90 修改的是共同对象。
+
+可以画成下面的关系，箭头表示“引用”，不表示可直接操作的内存地址：
+
+```text
+first ──┐
+        ├──> 同一个学生对象 {name: 小林, score: 90}
+alias ──┘
+
+other ─────> 另一个学生对象 {name: 小林, score: 90}
+```
+
+### 6.2 == 比较对象身份
+
+对 Student 引用使用 ==，判断是否引用同一个对象；它不会自动逐个比较属性。first.score == other.score 比较两个 int 值，first == other 比较两个对象引用，含义不同。
+
+String 的内容比较不能机械套用引用 ==，后续字符串章节会详细介绍 equals。当前也不重写自定义类的 equals。
+
+### 6.3 赋值为 null 不会清空对象
+
+alias = null 只让 alias 不再引用学生，first 仍引用原对象，仍能访问成绩。这不是“删除整个学生对象”，也不保证对象会立即被回收。不要用 null 代替对对象生命周期的理解。
+
+## 7. 对象传参：Java 仍然是值传递
+
+### 7.1 修改属性与重新赋形参
+
+```java
+public class ObjectParameterDemo {
+    public static void main(String[] args) {
+        Student student = new Student();
+        student.name = "小林";
+        student.score = 85;
+
+        changeScore(student, 90);
+        System.out.println("修改属性后：" + student.name + "，" + student.score);
+        replaceStudent(student);
+        System.out.println("形参重新赋值后：" + student.name + "，" + student.score);
+    }
+
+    // 调用约定：student 非 null，newScore 在 0～100。
+    public static void changeScore(Student student, int newScore) {
+        student.score = newScore;
+    }
+
+    public static void replaceStudent(Student student) {
+        // 仅替换本次调用的形参引用，不会替换 main 中的变量。
+        student = new Student();
+        student.name = "小周";
+        student.score = 100;
+        System.out.println("方法内新学生：" + student.name + "，" + student.score);
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+修改属性后：小林，90
+方法内新学生：小周，100
+形参重新赋值后：小林，90
+```
+
+调用 changeScore 时，形参得到实参引用值的副本，两个变量引用同一对象，因此修改属性会被调用方看到。
+
+replaceStudent 把形参重新赋为新对象引用，只改变该方法中的局部形参；main 的 student 变量仍保存原引用。新学生在方法内存在，不等于调用方变量也被替换。
+
+| 方法内操作              | 改变了什么         | 调用方能看到什么       |
+| ----------------------- | ------------------ | ---------------------- |
+| student.score = 90      | 共同学生对象的属性 | 原学生成绩更新         |
+| student = new Student() | 形参变量保存的引用 | 调用方变量仍指向原学生 |
+
+Java 始终按值传递。基本类型复制基本值，引用类型复制引用值。能通过引用修改对象，不能据此称为“引用传递”。这一点与第五章数组传参一致。
+
+### 7.2 需要更换调用方引用时接收返回值
+
+如果任务是创建另一名学生，让辅助方法返回它，再由调用方赋值。调用与赋值是两个步骤：只调用方法却忽略返回值，并不会自动替换已有变量。
+
+## 8. 方法返回对象与手动复制
+
+### 8.1 创建并返回一个学生
+
+```java
+public class ObjectReturnDemo {
+    public static void main(String[] args) {
+        Student first = createStudent("小林", 20, 85);
+        Student second = createStudent("小周", 19, 60);
+        first.printInfo();
+        second.printInfo();
+        System.out.println("每次调用都创建新对象：" + (first != second));
+    }
+
+    // 调用约定：姓名非 null，年龄在 0～150，成绩在 0～100。
+    public static Student createStudent(String name, int age, int score) {
+        Student student = new Student();
+        student.name = name;
+        student.age = age;
+        student.score = score;
+        return student;
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林，年龄：20，成绩：85
+姓名：小周，年龄：19，成绩：60
+每次调用都创建新对象：true
+```
+
+createStudent 是普通静态辅助方法，返回类型为 Student。每次调用都 new、填入数据、return 引用，因此两次调用得到两个不同学生。
+
+方法结束后，局部变量作用域结束，但调用方已经保存返回的引用，仍可使用对象。对象不会因为创建它的方法返回就自动失效。
+
+### 8.2 真正复制一名学生
+
+如果希望修改副本不影响原学生，需要创建新的学生对象，再复制所需字段：
+
+```java
+public class StudentCopyDemo {
+    public static void main(String[] args) {
+        CopyStudent original = new CopyStudent();
+        original.name = "小林";
+        original.age = 20;
+        original.score = 85;
+        CopyStudent copied = copyOf(original);
+        System.out.println("是否同一对象：" + (original == copied));
+        copied.name = "小周";
+        copied.score = 100;
+        System.out.println("原学生：" + original.name + "，" + original.age + "，" + original.score);
+        System.out.println("副本：" + copied.name + "，" + copied.age + "，" + copied.score);
+    }
+
+    // source 非 null；本模型只有 int 与 String 属性，不是任意对象的通用深拷贝。
+    public static CopyStudent copyOf(CopyStudent source) {
+        CopyStudent result = new CopyStudent();
+        result.name = source.name;
+        result.age = source.age;
+        result.score = source.score;
+        return result;
+    }
+}
+
+class CopyStudent {
+    public String name;
+    public int age;
+    public int score;
+}
+```
+
+运行结果：
+
+```text
+是否同一对象：false
+原学生：小林，20，85
+副本：小周，20，100
+```
+
+copyOf 的 source 参数非 null，返回一个新对象，复制了姓名、年龄、成绩。这里 name 复制的仍是字符串引用；String 不可变，给副本的 name 重新赋值不会修改原字符串。
+
+本模型只有 int 和 String 字段。如果以后增加 int[] scores 等可变引用字段，直接复制字段会共享内部数组，必须重新考虑复制策略。因此本例不是任意对象的通用深拷贝，也不使用 clone、序列化或反射。
+
+## 9. 用对象数组保存多名学生
+
+### 9.1 数组和学生需要分别创建
+
+```java
+public class StudentArrayDemo {
+    public static void main(String[] args) {
+        Student[] students = new Student[3];
+        System.out.println("数组长度：" + students.length);
+        System.out.println("第 1 项默认是 null：" + (students[0] == null));
+
+        students[0] = new Student();
+        students[0].name = "小林";
+        students[0].age = 20;
+        students[0].score = 85;
+        students[2] = new Student();
+        students[2].name = "小周";
+        students[2].age = 19;
+        students[2].score = 59;
+
+        for (int i = 0; i < students.length; i++) {
+            if (students[i] == null) {
+                System.out.println("第 " + (i + 1) + " 项尚未创建学生");
+                continue;
+            }
+            students[i].printInfo();
+        }
+
+        // 增强 for 得到引用值的副本：可以通过它修改对象。
+        for (Student student : students) {
+            if (student != null) {
+                student.score = 60;
+            }
+        }
+        System.out.println("增强 for 修改对象后，首项成绩：" + students[0].score);
+        for (Student student : students) {
+            student = null;
+        }
+        System.out.println("循环变量改为 null 后，首项仍存在：" + (students[0] != null));
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+数组长度：3
+第 1 项默认是 null：true
+姓名：小林，年龄：20，成绩：85
+第 2 项尚未创建学生
+姓名：小周，年龄：19，成绩：59
+增强 for 修改对象后，首项成绩：60
+循环变量改为 null 后，首项仍存在：true
+```
+
+new Student[3] 创建长度为 3 的数组，三个元素默认都是 null。Student[] 保存学生引用，不会在创建数组时自动执行三次 new Student()。
+
+访问 students[i].score 时需要同时满足：数组非 null、i 在合法范围内、students[i] 非 null。空数组是合法的数组对象，但没有可访问下标；长度大于 0 的数组也可能尚未创建任何学生。
+
+### 9.2 增强 for 修改对象与替换元素不同
+
+循环变量 student 保存元素值的副本；元素是引用时，副本引用同一对象：
+
+- student.score = 60：通过引用修改共同对象，数组中该学生的成绩也改变。
+- student = null：只给循环变量重新赋值，数组元素没有改变。
+- 需要替换或清空某个数组位置时，用下标赋值，例如 students[i] = null。
+
+第五章 int 数组的循环变量也是元素值的副本。差别在于本章的值是对象引用，通过引用还能访问对象。
+
+### 9.3 循环中复用一个对象的结果
+
+下面的程序同时展示“多个位置保存同一引用”与“每个位置创建独立学生”。前半段故意演示常见错误，但代码可以正常编译运行。
+
+```java
+public class ObjectArrayCreationDemo {
+    public static void main(String[] args) {
+        Student shared = new Student();
+        Student[] reused = new Student[2];
+        for (int i = 0; i < reused.length; i++) {
+            shared.name = "学生" + (i + 1);
+            shared.score = 60 + i;
+            reused[i] = shared;
+        }
+        System.out.println("复用时是否同一对象：" + (reused[0] == reused[1]));
+        System.out.println("复用数组的第 1 人：" + reused[0].name + "，" + reused[0].score);
+        System.out.println("复用数组的第 2 人：" + reused[1].name + "，" + reused[1].score);
+
+        Student[] separate = new Student[2];
+        for (int i = 0; i < separate.length; i++) {
+            // 每轮创建新对象，每人有独立的数据。
+            Student student = new Student();
+            student.name = "学生" + (i + 1);
+            student.score = 60 + i;
+            separate[i] = student;
+        }
+        System.out.println("分别创建时是否同一对象：" + (separate[0] == separate[1]));
+        System.out.println("独立数组的第 1 人：" + separate[0].name + "，" + separate[0].score);
+        System.out.println("独立数组的第 2 人：" + separate[1].name + "，" + separate[1].score);
+    }
+}
+
+class Student {
+    public String name;
+    public int score;
+}
+```
+
+运行结果：
+
+```text
+复用时是否同一对象：true
+复用数组的第 1 人：学生2，61
+复用数组的第 2 人：学生2，61
+分别创建时是否同一对象：false
+独立数组的第 1 人：学生1，60
+独立数组的第 2 人：学生2，61
+```
+
+### 9.4 复制外层数组后，学生仍可能共享
+
+第五章复制 int[] 后，每个元素都是独立的整数位置。复制 Student[] 时，每个位置复制的是引用值，新的数组仍可能指向原来的学生：
+
+```java
+import java.util.Arrays;
+
+public class ObjectArrayCopyDemo {
+    public static void main(String[] args) {
+        Student student = new Student();
+        student.name = "小林";
+        student.score = 85;
+        Student[] original = {student};
+        Student[] copied = Arrays.copyOf(original, original.length);
+        System.out.println("是否同一个数组：" + (original == copied));
+        System.out.println("首项是否同一学生：" + (original[0] == copied[0]));
+        copied[0].score = 100;
+        System.out.println("修改副本中的学生后，原数组成绩：" + original[0].score);
+        // 位置本身独立，清空副本位置不会清空原数组的位置。
+        copied[0] = null;
+        System.out.println("清空副本位置后，原学生仍存在：" + (original[0] != null));
+    }
+}
+
+class Student {
+    public String name;
+    public int score;
+}
+```
+
+运行结果：
+
+```text
+是否同一个数组：false
+首项是否同一学生：true
+修改副本中的学生后，原数组成绩：100
+清空副本位置后，原学生仍存在：true
+```
+
+外层数组独立，与元素引用的学生独立，是两层不同的问题。需要独立学生副本时，可以逐项调用前面的手动复制方法；null 位置仍需按需求保留，不要直接解引用。
+
+## 10. 用对象数组统计成绩
+
+### 10.1 所有位置都已有学生
+
+下面约定数组非 null，所有元素都已创建学生，成绩在 0～100。sum 与 countPassing 接受长度为 0 的数组；printReport 遇到空数组先提示，不计算平均分。
+
+```java
+public class StudentStatisticsDemo {
+    public static void main(String[] args) {
+        Student[] students = {
+            createStudent("小林", 85),
+            createStudent("小周", 59),
+            createStudent("小陈", 60)
+        };
+        printReport(students);
+        printReport(new Student[0]);
+    }
+
+    // 本例的学生数组非 null，每一项均为已初始化的学生，成绩在 0～100。
+    public static Student createStudent(String name, int score) {
+        Student student = new Student();
+        student.name = name;
+        student.age = 20;
+        student.score = score;
+        return student;
+    }
+
+    public static long sum(Student[] students) {
+        long total = 0;
+        for (Student student : students) {
+            total += student.score;
+        }
+        return total;
+    }
+
+    public static int countPassing(Student[] students) {
+        int count = 0;
+        for (Student student : students) {
+            if (student.isPassing()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static void printReport(Student[] students) {
+        if (students.length == 0) {
+            System.out.println("没有学生，无法计算平均分。");
+            return;
+        }
+        for (Student student : students) {
+            student.printInfo();
+        }
+        System.out.println("人数：" + students.length);
+        System.out.println("总分：" + sum(students));
+        System.out.println("平均分：" + (double) sum(students) / students.length);
+        System.out.println("及格人数：" + countPassing(students));
+    }
+}
+
+// 学生模型：把一名学生的数据与行为放在一起，供本包的多个演示使用。
+class Student {
+    // 本章先直接访问属性，第七章再使用 private 和访问方法保护数据。
+    public String name;
+    public int age;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，年龄：" + age + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林，年龄：20，成绩：85
+姓名：小周，年龄：20，成绩：59
+姓名：小陈，年龄：20，成绩：60
+人数：3
+总分：204
+平均分：68.0
+及格人数：2
+没有学生，无法计算平均分。
+```
+
+总分使用 long 累加，平均分在除法前转换为 double，避免整数截断。判断及格调用对象自己的 isPassing，遍历负责汇总多名学生。
+
+### 10.2 数组中有未使用的位置
+
+当数组用于预留容量时，某些位置可以是 null。下例统计实际创建人数、平均分与及格人数，并报告空数组和全为 null 的数组。
+
+调用约定：数组非 null，非 null 项的姓名非 null、成绩在 0～100；average 要求至少有一个实际学生，由 printReport 先判断。
+
+```java
+public class StudentGroupDemo {
+    public static void main(String[] args) {
+        GroupStudent[] students = new GroupStudent[4];
+        students[0] = createStudent("小林", 85);
+        students[2] = createStudent("小周", 59);
+        students[3] = createStudent("小陈", 60);
+        printReport(students);
+        printReport(new GroupStudent[0]);
+        printReport(new GroupStudent[2]);
+    }
+
+    public static GroupStudent createStudent(String name, int score) {
+        GroupStudent student = new GroupStudent();
+        student.name = name;
+        student.score = score;
+        return student;
+    }
+
+    // 所有数组参数均非 null；已创建学生的姓名非 null、成绩在 0～100。
+    public static int countStudents(GroupStudent[] students) {
+        int count = 0;
+        for (GroupStudent student : students) {
+            if (student != null) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public static int countPassing(GroupStudent[] students) {
+        int count = 0;
+        for (GroupStudent student : students) {
+            if (student != null && student.isPassing()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    // 调用约定：至少有一个实际学生，不能只检查数组长度。
+    public static double average(GroupStudent[] students) {
+        long total = 0;
+        for (GroupStudent student : students) {
+            if (student != null) {
+                total += student.score;
+            }
+        }
+        return (double) total / countStudents(students);
+    }
+
+    public static void printReport(GroupStudent[] students) {
+        int count = countStudents(students);
+        if (count == 0) {
+            System.out.println("没有学生，无法计算平均分。");
+            return;
+        }
+        for (GroupStudent student : students) {
+            if (student != null) {
+                student.printInfo();
+            }
+        }
+        System.out.println("实际人数：" + count);
+        System.out.println("平均分：" + average(students));
+        System.out.println("及格人数：" + countPassing(students));
+    }
+}
+
+class GroupStudent {
+    public String name;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，成绩：" + score);
+    }
+
+    public boolean isPassing() {
+        return score >= 60;
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林，成绩：85
+姓名：小周，成绩：59
+姓名：小陈，成绩：60
+实际人数：3
+平均分：68.0
+及格人数：2
+没有学生，无法计算平均分。
+没有学生，无法计算平均分。
+```
+
+数组长度是 4，但实际人数是 3，平均分应为 204 / 3.0，而不是 204 / 4.0。长度大于 0 也不能证明有人，例如 new GroupStudent[2] 的两项都是 null。
+
+countStudents 与 countPassing 在无人时返回 0；average 在本例不定义无人时的结果。由调用方先判断，不能用一名假学生或一个假平均分掩盖条件不满足的问题。
+
+## 11. 用实例方法更新成绩
+
+### 11.1 有效才更新，失败保留旧值
+
+MutableStudent 的 updateScore 先检查范围，只有 0～100 才修改 score 并返回 true。方法本身不打印，调用方决定如何展示结果。
+
+```java
+public class ScoreUpdateDemo {
+    public static void main(String[] args) {
+        MutableStudent student = new MutableStudent();
+        student.name = "小林";
+        student.score = 59;
+        MutableStudent alias = student;
+        System.out.println("修改为 60：" + alias.updateScore(60));
+        System.out.println("原变量看到的成绩：" + student.score);
+        System.out.println("修改为 101：" + alias.updateScore(101));
+        System.out.println("拒绝后成绩：" + student.score);
+        System.out.println("是否同一对象：" + (student == alias));
+    }
+}
+
+class MutableStudent {
+    public String name;
+    public int score;
+
+    // 成功时更新并返回 true；失败时返回 false，保留旧成绩。
+    public boolean updateScore(int newScore) {
+        if (newScore < 0 || newScore > 100) {
+            return false;
+        }
+        score = newScore;
+        return true;
+    }
+}
+```
+
+运行结果：
+
+```text
+修改为 60：true
+原变量看到的成绩：60
+修改为 101：false
+拒绝后成绩：60
+是否同一对象：true
+```
+
+通过 alias 调用 updateScore，修改的仍是与 student 共同引用的学生。先验证再赋值，保证范围错误不会破坏旧成绩；不能先 score = newScore 再检查。
+
+### 11.2 有校验方法不等于完整封装
+
+本例 score 仍是 public，其他代码可以绕过 updateScore 直接赋值。当前方法只能保证经它更新时的行为，尚未建立完整的数据保护。下一章用 private 与访问方法限制外部写入，同时在构造时明确初始状态。
+
+## 12. 综合示例：录入学生并查找最高分
+
+### 12.1 方法分工与调用约定
+
+程序按顺序读取人数、每人的姓名与成绩，然后输出全部学生、平均分，以及最先录入的最高分学生。
+
+| 方法                   | 职责与约定                                                     |
+| ---------------------- | -------------------------------------------------------------- |
+| readInRange            | 打印提示、读取整数，范围错误重复当前输入；`minimum <= maximum` |
+| createStudent          | 每次创建新的学生，保存有效姓名与成绩后返回引用                 |
+| average                | 数组非 null、至少一项、各项已创建且成绩有效；返回平均分        |
+| findTopStudent         | 与 average 的前提一致；返回首个最高分学生的已有引用            |
+| InputStudent.printInfo | 输出当前对象的姓名与成绩                                       |
+
+main 拥有唯一 Scanner，最后关闭。输入约定完整：人数与成绩符合 int 类型；姓名用 next() 读取一个不含空白的词。这里不混用 nextLine()，不支持带空格姓名；非数字成绩和输入提前结束的情况留到异常章节处理。
+
+人数先限制为 1～100，因此完整录入后的统计不会遇到空数组或 null 项。非法成绩只重输当前人的成绩，不重新读取姓名，也不进入下一名。
+
+```java
+import java.util.Scanner;
+
+public class StudentInputDemo {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        int count = readInRange(scanner, "请输入人数（1～100）：", 1, 100);
+        InputStudent[] students = new InputStudent[count];
+        for (int i = 0; i < students.length; i++) {
+            System.out.println("请输入第 " + (i + 1) + " 名学生的姓名（不含空格）：");
+            String name = scanner.next();
+            int score = readInRange(scanner,
+                    "请输入第 " + (i + 1) + " 名学生的成绩（0～100）：", 0, 100);
+            // 每次创建新学生，不能循环复用同一个对象。
+            students[i] = createStudent(name, score);
+        }
+        for (InputStudent student : students) {
+            student.printInfo();
+        }
+        System.out.println("平均分：" + average(students));
+        InputStudent top = findTopStudent(students);
+        System.out.println("最高分学生：" + top.name + "，成绩：" + top.score);
+        scanner.close();
+    }
+
+    // 输入完整且整数项符合 int 类型；minimum <= maximum。
+    public static int readInRange(Scanner scanner, String prompt, int minimum, int maximum) {
+        while (true) {
+            System.out.println(prompt);
+            int value = scanner.nextInt();
+            if (value >= minimum && value <= maximum) {
+                return value;
+            }
+            System.out.println("输入超出范围，请重新输入。");
+        }
+    }
+
+    public static InputStudent createStudent(String name, int score) {
+        InputStudent student = new InputStudent();
+        student.name = name;
+        student.score = score;
+        return student;
+    }
+
+    // 两个统计方法均要求数组至少有一项，所有项已创建，成绩在 0～100。
+    public static double average(InputStudent[] students) {
+        long total = 0;
+        for (InputStudent student : students) {
+            total += student.score;
+        }
+        return (double) total / students.length;
+    }
+
+    public static InputStudent findTopStudent(InputStudent[] students) {
+        InputStudent top = students[0];
+        for (int i = 1; i < students.length; i++) {
+            // 只用 >：并列最高分时保留最先录入者，返回已有对象的引用。
+            if (students[i].score > top.score) {
+                top = students[i];
+            }
+        }
+        return top;
+    }
+}
+
+class InputStudent {
+    public String name;
+    public int score;
+
+    public void printInfo() {
+        System.out.println("姓名：" + name + "，成绩：" + score);
+    }
+}
+```
+
+输入：
+
+```text
+0
+3
+小林
+101
+85
+小周
+59
+小陈
+85
+```
+
+输出（不含用户输入回显）：
+
+```text
+请输入人数（1～100）：
+输入超出范围，请重新输入。
+请输入人数（1～100）：
+请输入第 1 名学生的姓名（不含空格）：
+请输入第 1 名学生的成绩（0～100）：
+输入超出范围，请重新输入。
+请输入第 1 名学生的成绩（0～100）：
+请输入第 2 名学生的姓名（不含空格）：
+请输入第 2 名学生的成绩（0～100）：
+请输入第 3 名学生的姓名（不含空格）：
+请输入第 3 名学生的成绩（0～100）：
+姓名：小林，成绩：85
+姓名：小周，成绩：59
+姓名：小陈，成绩：85
+平均分：76.33333333333333
+最高分学生：小林，成绩：85
+```
+
+### 12.2 为什么最高分从首人开始
+
+findTopStudent 先令 top 引用第 0 个学生，之后只在发现更高成绩时更新引用。使用 > 可以保留并列时最先录入者，改成 >= 会让后面的并列者覆盖前者。
+
+不需要排序，也不需要创建一个只保存最高分的新对象。返回已有学生才能同时保留其姓名和成绩；如果调用方随后修改返回对象的属性，数组中同一学生也会改变。本例只读取这个引用，不修改。
+
+### 12.3 建议验证的数据
+
+每行是一组独立运行的输入：
+
+| 输入                        | 预期行为                           |
+| --------------------------- | ---------------------------------- |
+| `1 小林 0`                  | 平均分 0.0，最高分学生为小林/0     |
+| `1 小林 100`                | 平均分 100.0，最高分学生为小林/100 |
+| `2 小林 59 小周 60`         | 平均分 59.5，最高分学生为小周/60   |
+| `2 小林 60 小周 60`         | 并列时返回小林，平均分 60.0        |
+| `101 1 小林 60`             | 人数重输一次，合法后才创建数组     |
+| `1 小林 -1 101 60`          | 同一人成绩重输两次，不重复读取姓名 |
+| `3 小林 100 小周 0 小陈 60` | 学生信息各自独立，最高分学生为小林 |
+
+还可以录入 100 人、成绩均为 100，平均分应为 100.0，并列最高分取首人。统计与查找不改变原顺序，不更改任何学生的属性。
+
+## 13. 常见错误与排查
+
+### 13.1 只声明变量，没有创建对象
+
+Student student; 没有赋值，读取局部变量会编译失败；Student student = null; 虽然已赋值，但访问实例成员会发生空指针异常。先检查 new 在哪里执行，而不是把错误都归结为“缺少分号”。
+
+### 13.2 从 static 的 main 直接访问实例成员
+
+实例属性与方法属于具体对象。先创建学生，再使用 student.score、student.isPassing()。不要为了让编译通过就把所有字段和方法加上 static，否则会改变数据的归属。
+
+### 13.3 模型与入口类放错位置
+
+方法写在所属类内部，不能定义在 main 里，也不能落在类的花括号外。一个 .java 文件只声明一个 public 顶层类，文件名与它一致；另一个模型顶层类不加 public，或拆到同名文件中。
+
+### 13.4 找不到类或找不到 main
+
+找不到 Student 时，检查是否复制了完整示例、模型是否同包、分文件时是否一起编译。模型类没有 main 属于正常情况，应运行 Demo 入口，不是运行 Student。
+
+### 13.5 多个人的信息一起变化
+
+检查是否只 new 一次，再把同一引用放进多个变量或数组位置。每名独立学生都要有自己的对象；姓名不同并不能自动产生不同对象。
+
+### 13.6 把 == 当作逐字段比较
+
+Student 引用的 == 判断同一对象。两个独立对象即使属性相同也可能为 false；相同引用则为 true，不会因为属性变化而自动变成不同对象。
+
+### 13.7 对象数组漏创建学生或错用长度
+
+new Student[n] 只创建数组，元素默认是 null。先判断元素再访问。用于容量预留的数组，平均分要除以实际学生人数；全为 null 时不能计算平均分。
+
+### 13.8 修改循环变量却没有替换数组项
+
+增强 for 中 student = new Student() 或 student = null，只改变循环变量。替换数组位置需要下标赋值；通过 student.score 修改对象则会被所有共享引用看到。
+
+### 13.9 把形参重新赋值理解为替换调用方变量
+
+形参复制的是引用值。改对象属性与改形参引用是两种操作。需要让调用方变量指向新对象时，返回引用，再由调用方明确赋值。
+
+### 13.10 复制了数组却以为学生也复制了
+
+Arrays.copyOf 复制外层元素值；Student[] 的元素值是引用，因此学生对象仍可能共享。需要独立学生时逐项创建副本，并根据字段是否可变判断复制层次。
+
+## 14. 知识回顾与巩固
+
+### 14.1 核心知识
+
+| 知识点       | 需要记住的内容                                 |
+| ------------ | ---------------------------------------------- |
+| 类与对象     | 类描述类型，对象是具体实例                     |
+| 引用变量     | 保存引用，不是把整个学生对象塞进变量           |
+| 创建与默认值 | new 创建对象；字段有默认值，局部变量先赋值再读 |
+| 实例方法     | 通过对象调用，使用该对象的属性                 |
+| 引用赋值     | 复制引用值，不复制对象                         |
+| == 与 null   | 引用 == 判断同一对象；null 表示不引用对象      |
+| 值传递       | 形参复制引用值，改对象与改形参不同             |
+| 对象返回值   | 返回引用，不会自动创建副本或替换调用方变量     |
+| 对象数组     | 数组与学生分别创建，null 项不计入实际人数      |
+| 对象复制     | 外层数组独立，不代表内部学生独立               |
+
+### 14.2 巩固练习
+
+**练习 1：学生信息。** 自己定义 ProfileStudent，包含 name、age、score 和实例方法 printInfo()、isPassing()。创建“小林、20、59”，打印信息并判断；把成绩改为 60，再判断应为 true。验证 0、59、60、100，不把输出内容写死。
+
+**练习 2：矩形。** 定义长宽属性及 area()、perimeter() 实例方法。创建 3.5/2 与 4/0 两个矩形，面积应为 7.0、0.0，周长应为 11.0、8.0。只把第一个矩形的宽改为 4，验证第一个面积变为 14.0，第二个宽仍为 0.0。
+
+**练习 3：安全更新成绩。** 定义 updateScore(int newScore)，合法才修改并返回 true，范围外返回 false 且保留旧值。从 85 分开始依次尝试 -1、0、100、101，成绩应依次为 85、0、100、100。让两个引用指向同一对象，解释各自看到的结果。
+
+**练习 4：带空位置的统计。** 自己实现创建学生、统计实际人数、及格人数和平均分的方法。对成绩位置 `[85, null, 59, 60]`，实际人数 3、平均分 68.0、及格人数 2；对空数组和全为 null 的数组只提示无人，不调用平均分方法。输入数组非 null，不修改数组或学生。
+
+**练习 5：完整录入。** 独立实现姓名与成绩录入，人数 1～100、成绩 0～100，错误成绩重输当前人。每人创建新对象，查找首个最高分学生并返回已有引用，不排序。验证单人、59/60、0/100、并列最高分、重复非法输入。
+
+**选做：复制学生。** 创建一个与 source 属性相同的新学生对象。返回引用应与 source 不同；修改副本的姓名、年龄、成绩，原对象不变。source 非 null，只包含 String 和 int 字段，不要求实现通用深拷贝。
+
+### 14.3 引用思考题
+
+先不运行程序，回答：
+
+- 为什么两次 new 得到属性相同的学生，== 仍为 false？
+- alias = first 后修改 alias.score，为什么 first 能看到变化？
+- 为什么方法内 student = new Student() 不会替换 main 的 student？
+- 为什么 new Student[3] 后，不能直接调用 students[0].printInfo()？
+- 增强 for 中 student.score = 60 与 student = null 有什么区别？
+- 为什么复制 Student[] 后，修改 copied[0].score 可能影响原数组看到的成绩？
+- findTopStudent 返回引用后，再修改返回学生的属性，会影响谁？
+
+<details>
+<summary>展开查看对象与引用的思考题答案</summary>
+
+- 两次 new 创建的是两个独立对象，== 不会比较字段内容。
+- 赋值复制引用，两者引用同一学生，修改的是共同对象。
+- 形参与调用方变量独立，给形参赋新引用只改变方法内变量。
+- 创建数组后元素默认是 null，尚未创建可调用方法的学生。
+- 前者通过引用修改共同对象，后者只改变循环变量，不替换数组元素。
+- 复制外层数组复制的是学生引用，内部学生仍可能共享。
+- 返回的是已有学生的引用，所有引用到该学生的位置都会看到修改。
+
+</details>
+
+### 14.4 示例运行与教学项目对应
+
+将任意完整代码块保存为与公开入口类同名的文件，例如 StudentObjectDemo.java。在该文件目录使用 JDK 17 执行：
+
+```bash
+javac -encoding UTF-8 --release 17 StudentObjectDemo.java
+java StudentObjectDemo
+```
+
+Student 模型已放在同一代码块中，无需另找依赖。多个示例重复使用模型类名，运行另一个示例时应使用单独目录，避免同名类冲突或覆盖旧模型。
+
+配套项目为 [java-study-basic](https://github.com/coder-sunshine/java-study-basic)。本文按知识点组织，将所需模型合并到单个代码块，便于独立阅读；教学项目中 Student.java、Rectangle.java 单独存放，带有相应 package 声明。对照本地项目可使用：
+
+| 内容                                             | 教学项目位置（相对项目根目录）       |
+| ------------------------------------------------ | ------------------------------------ |
+| 类、对象、实例方法、引用、传参、返回值与对象数组 | src/basic/chapter06object/examples/  |
+| 学生信息、矩形、成绩更新、对象数组统计与录入练习 | src/basic/chapter06object/exercises/ |
+| 尝试后用于对照的参考答案                         | src/basic/chapter06object/solutions/ |
+| 题目与完整输入输出说明                           | exercises/chapter06.md               |
+
+上表是本地目录对应关系；GitHub 页面内容以已推送版本为准。阅读数组边界可回看[第五章](/backend/java/basic/ch05-array/)，参数与返回值可回看[第四章](/backend/java/basic/ch04-method/)。
+
+下一章学习封装与构造方法：让对象创建时就具备必要数据，限制外部直接写入非法状态，并进一步理解 this、实例成员与 static 成员。
