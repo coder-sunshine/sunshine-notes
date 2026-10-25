@@ -1,0 +1,1225 @@
+---
+title: 第八章：继承、重写、多态、抽象类与接口
+description: 基于 JDK 17 学习 extends、super、方法重写、多态、抽象类和接口，通过统一类型组织不同对象，理解重载选择、类型转换与共同契约。
+sidebar:
+  label: 第八章：继承、重写、多态、抽象类与接口
+  order: 8
+---
+
+[第七章](/backend/java/basic/ch07-encapsulation/)已经学习封装、构造方法与静态成员，能够创建状态合法的学生对象。本章进一步解决：不同对象拥有共同特点，但执行同一操作时有不同的行为，如何让调用方统一使用它们？
+
+主线是**继承共同部分 → 重写差异行为 → 通过父类或接口统一调用**。继续使用 JDK 17、普通类和数组；暂不引入集合、异常捕获、Lambda、反射或框架。
+
+所有标记为 java 的代码块都是完整程序，模型已合并在同一代码块中。保存为与 public 入口类同名的 .java 文件即可运行。不同示例会重复定义 Person、Student、Member 等类，请为每个程序使用独立目录，不能把全部代码块一起粘到同一个目录。
+
+## 1. 继承表达什么关系
+
+### 1.1 “是一种”与“拥有一个”
+
+学生是一种人，教师也是一种人，因此可以让 Student、Teacher 继承 Person。公共姓名与读取行为保留在 Person，成绩与科目留在对应子类。
+
+学生拥有一个成绩单，不代表学生是一种成绩单。此时应让学生持有成绩单字段，这叫组合。继承应当反映合理的类型关系，不是看到两个类有相似代码就建立父子关系。
+
+Java 类使用 extends 指定直接父类，只能直接继承一个类，但可以形成多层继承关系。不显式写 extends 的普通类隐式继承 Object。
+
+### 1.2 继承继续遵守封装
+
+父类 private 字段不能在子类源码中直接访问，不能因为要继承就把 name 改成 public，也不要在子类重新定义一个同名 name。子类对象包含由父类初始化和维护的状态，应通过可访问的方法使用它。
+
+| 修饰符     | 对子类的影响                                                 |
+| ---------- | ------------------------------------------------------------ |
+| private    | 子类不能直接访问父类的私有成员，使用公开行为                 |
+| 不写修饰符 | 仅同包可访问；跨包子类不能仅凭继承访问                       |
+| protected  | 同包可访问；跨包时子类可访问，但通过对象限定访问还有额外规则 |
+| public     | 在类本身可访问的前提下，可从外部调用                         |
+
+本章模型统一使用 private 数据与 public 行为，不展开跨包 protected 访问。构造方法不会被子类继承，父类 private 方法也不是子类的重写目标。
+
+## 2. 第一个继承示例
+
+Person 负责姓名，Student 负责成绩，Teacher 负责科目。Student 和 Teacher 用 super(name) 完成父类初始化；用 super.describe() 复用父类描述，再补自己的内容。
+
+姓名 null、空串、纯空白回退“未命名”，有效值原样保存。成绩范围 0～100，无效构造参数保留 0；非法更新返回 false 并保留旧值。科目无效回退“未设置”。本例不开放姓名和科目的修改。
+
+```java
+// 继承复用公开行为，不需要把父类字段改成 public 或 protected。
+public class InheritanceDemo {
+    public static void main(String[] args) {
+        Student student = new Student("小林", 85);
+        Teacher teacher = new Teacher("王老师", "Java");
+        System.out.println("继承的姓名读取：" + student.getName());
+        System.out.println(student.describe());
+        System.out.println(teacher.describe());
+        System.out.println("修改成绩 101：" + student.setScore(101));
+        System.out.println("拒绝后成绩：" + student.getScore());
+    }
+}
+
+// 父类保留 private 字段；子类通过公开方法访问姓名。
+class Person {
+    private String name = "未命名";
+
+    public Person(String name) {
+        // 构造期间直接初始化，不调用可能被子类重写的实例方法。
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String describe() {
+        return "姓名：" + name;
+    }
+}
+
+// Student 是一种 Person，增加独有成绩并重写描述行为。
+class Student extends Person {
+    private int score = 0;
+
+    public Student(String name, int score) {
+        super(name);
+        if (score >= 0 && score <= 100) {
+            this.score = score;
+        }
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < 0 || score > 100) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    @Override
+    public String describe() {
+        return super.describe() + "，成绩：" + score;
+    }
+}
+
+// Teacher 复用父类姓名，保存自己的科目。
+class Teacher extends Person {
+    private String subject = "未设置";
+
+    public Teacher(String name, String subject) {
+        super(name);
+        if (subject != null && !subject.isBlank()) {
+            this.subject = subject;
+        }
+    }
+
+    @Override
+    public String describe() {
+        return super.describe() + "，科目：" + subject;
+    }
+}
+```
+
+运行结果：
+
+```text
+继承的姓名读取：小林
+姓名：小林，成绩：85
+姓名：王老师，科目：Java
+修改成绩 101：false
+拒绝后成绩：85
+```
+
+getName 没有在 Student 重新定义，仍可以通过 student.getName() 调用。describe 则在 Student 中提供了新实现。
+
+这里父类构造直接初始化自己的字段，没有调用可被子类重写的方法。若在父类构造中调用可重写方法，可能提前执行子类版本，此时子类字段还没有完成初始化，容易依赖未准备好的状态。
+
+## 3. super 与构造方法的执行顺序
+
+### 3.1 两种 super 用法
+
+- super(name)：调用直接父类构造，完成父类部分的初始化。
+- super.describe()：调用父类版本的方法，在其结果基础上扩展。
+
+super 不是第二个独立对象，也不会复制父类。一次 new Student(...) 得到的是一个包含父类状态的 Student 对象。
+
+### 3.2 JDK 17 的构造链规则
+
+构造体显式调用 this(...) 或 super(...) 时必须放第一条语句，同一构造体不能同时写两者。this(...) 委托同类另一构造，沿链最终进入父类构造，不能形成循环。
+
+若两者都没写，编译器会尝试加入 super()。父类没有可访问的无参构造时，就需要显式调用存在的有参构造。父类有 Person(String name)，不代表子类自动拥有 Student(String name)，子类构造需要自己定义。
+
+```java
+// 一次 new 创建一个子类对象；先完成父类构造，再执行子类构造体余下部分。
+public class ConstructorOrderDemo {
+    public static void main(String[] args) {
+        new OrderStudent();
+    }
+}
+
+class OrderPerson {
+    public OrderPerson(String name) {
+        System.out.println("父类构造：" + name);
+    }
+}
+
+class OrderStudent extends OrderPerson {
+    public OrderStudent() {
+        this("小林");
+        System.out.println("子类无参构造结束");
+    }
+
+    public OrderStudent(String name) {
+        super(name);
+        System.out.println("子类有参构造：" + name);
+    }
+}
+```
+
+运行结果：
+
+```text
+父类构造：小林
+子类有参构造：小林
+子类无参构造结束
+```
+
+执行过程是：子类无参构造委托子类有参构造 → 调用父类有参构造 → 回到子类有参构造 → 回到子类无参构造。只有一次 new，没有创建两个或三个对象。
+
+完整初始化还包括字段初始值、初始化器等步骤；这个程序只观察构造体打印的先后。构造方法不被继承、不能被重写，也不能添加 @Override。
+
+## 4. 重写与重载分别在什么时候决定
+
+### 4.1 重写：替换继承的实例行为
+
+Student 的 describe 与 Person 同名、同参数，属于重写。建议始终使用 @Override：如果不小心改了参数列表，编译器会提示没有覆盖父类方法，而不是悄悄变成重载。
+
+重写应满足这些规则：
+
+- 方法名与参数列表一致；基本返回类型、void 必须一致，引用返回类型允许兼容的子类型。
+- 不能缩小访问权限，父类 public 方法在子类中仍应 public。
+- private 方法不是重写目标，final 方法不能重写。
+- static 同签名方法属于隐藏，不是实例重写；本章静态方法通过类名调用。
+
+### 4.2 重载：相同名字，不同参数列表
+
+重载通过参数类型、数量、顺序区分，不能只改返回类型。它在编译时根据调用表达式的类型与可用签名选择；重写的实例方法则在运行时根据实际对象选择实现。
+
+下面 show 有 Person 和 Student 两种参数；student 与 person 指向同一个对象。先预测前缀，再预测 describe 的内容。
+
+```java
+// 重载先按编译期类型选签名；重写再按实际对象选实例实现。
+public class OverloadVsOverrideDemo {
+    public static void main(String[] args) {
+        Student student = new Student("小林", 85);
+        Person person = student;
+        show(student);
+        show(person);
+        System.out.println("是否同一对象：" + (student == person));
+    }
+
+    public static void show(Person person) {
+        System.out.println("Person 参数：" + person.describe());
+    }
+
+    public static void show(Student student) {
+        System.out.println("Student 参数：" + student.describe());
+    }
+}
+
+// 父类保留 private 字段；子类通过公开方法访问姓名。
+class Person {
+    private String name = "未命名";
+
+    public Person(String name) {
+        // 构造期间直接初始化，不调用可能被子类重写的实例方法。
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String describe() {
+        return "姓名：" + name;
+    }
+}
+
+// Student 是一种 Person，增加独有成绩并重写描述行为。
+class Student extends Person {
+    private int score = 0;
+
+    public Student(String name, int score) {
+        super(name);
+        if (score >= 0 && score <= 100) {
+            this.score = score;
+        }
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < 0 || score > 100) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    @Override
+    public String describe() {
+        return super.describe() + "，成绩：" + score;
+    }
+}
+```
+
+运行结果：
+
+```text
+Student 参数：姓名：小林，成绩：85
+Person 参数：姓名：小林，成绩：85
+是否同一对象：true
+```
+
+show(person) 选择 show(Person)，因为 person 的声明类型是 Person。进入该重载后调用 person.describe()，实际对象仍为 Student，所以执行 Student 重写的 describe。
+
+| 调用          | 编译时选中的重载 | 运行时执行的 describe |
+| ------------- | ---------------- | --------------------- |
+| show(student) | show(Student)    | Student.describe      |
+| show(person)  | show(Person)     | Student.describe      |
+
+不要把“实际对象决定重写实现”推广成“所有方法选择都只看实际对象”。两个 show 是静态重载，describe 是实例重写，这是两个独立过程。
+
+## 5. 多态：共同类型，不同实现
+
+### 5.1 声明类型与实际类型
+
+Person person = new Student(...) 是向上转型，无需显式强制转换。变量的声明类型是 Person，对象的实际类型是 Student，引用赋值不会复制或改变对象。
+
+编译器根据声明类型检查可调用成员。因此 person.describe() 合法，但 person.getScore() 不合法：Person 没有声明 getScore。合法的重写实例方法，在运行时选择实际对象实现。
+
+字段不是按照重写实例方法的规则动态分派。不要在父子类各放一个同名字段，用它们推断多态规则。
+
+### 5.2 用一个循环处理多种对象
+
+Person[] 可以保存 Student、Teacher、普通 Person 的引用。循环只使用共同 describe，不需要为每一种子类写不同分支。
+
+```java
+// 一个父类数组、一段循环，处理不同子类。null 项显式跳过。
+public class PolymorphismDemo {
+    public static void main(String[] args) {
+        Person[] people = {
+            new Student("小林", 85), null,
+            new Teacher("王老师", "Java"), new Person("访客")
+        };
+        printAll(people);
+    }
+
+    // 数组非 null，允许空数组及 null 元素；不修改原数组。
+    public static void printAll(Person[] people) {
+        for (Person person : people) {
+            if (person != null) {
+                System.out.println(person.describe());
+            }
+        }
+    }
+}
+
+// 父类保留 private 字段；子类通过公开方法访问姓名。
+class Person {
+    private String name = "未命名";
+
+    public Person(String name) {
+        // 构造期间直接初始化，不调用可能被子类重写的实例方法。
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String describe() {
+        return "姓名：" + name;
+    }
+}
+
+// Student 是一种 Person，增加独有成绩并重写描述行为。
+class Student extends Person {
+    private int score = 0;
+
+    public Student(String name, int score) {
+        super(name);
+        if (score >= 0 && score <= 100) {
+            this.score = score;
+        }
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < 0 || score > 100) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    @Override
+    public String describe() {
+        return super.describe() + "，成绩：" + score;
+    }
+}
+
+// Teacher 复用父类姓名，保存自己的科目。
+class Teacher extends Person {
+    private String subject = "未设置";
+
+    public Teacher(String name, String subject) {
+        super(name);
+        if (subject != null && !subject.isBlank()) {
+            this.subject = subject;
+        }
+    }
+
+    @Override
+    public String describe() {
+        return super.describe() + "，科目：" + subject;
+    }
+}
+```
+
+运行结果：
+
+```text
+姓名：小林，成绩：85
+姓名：王老师，科目：Java
+姓名：访客
+```
+
+printAll 约定数组本身非 null，允许空数组和 null 元素；空位置跳过，不修改数据和顺序。new Person[3] 只创建数组，三个位置最初都是 null，并没有自动创建三个人。
+
+新增一种 Person 子类并重写 describe 后，可以继续放入同一个数组，printAll 不需要修改。这是使用共同类型的实际价值。
+
+## 6. 向下转型与 instanceof
+
+只有确实需要 getScore 等子类独有行为时，才需要取回子类使用视角。先用 instanceof 检查，再显式转换。这里采用传统写法，JDK 17 也支持更简洁的模式匹配，可在基础熟悉后补充。
+
+```java
+// 需要子类独有操作时才转换；转换只改变引用的使用视角。
+public class SafeCastDemo {
+    public static void main(String[] args) {
+        Person[] people = {new Student("小林", 85), new Teacher("王老师", "Java"), null};
+        for (Person person : people) {
+            if (person instanceof Student) {
+                Student student = (Student) person;
+                System.out.println("学生成绩：" + student.getScore());
+                System.out.println("转换后仍是原对象：" + (student == person));
+            } else {
+                System.out.println("不是学生，跳过成绩读取");
+            }
+        }
+    }
+}
+
+// 父类保留 private 字段；子类通过公开方法访问姓名。
+class Person {
+    private String name = "未命名";
+
+    public Person(String name) {
+        // 构造期间直接初始化，不调用可能被子类重写的实例方法。
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String describe() {
+        return "姓名：" + name;
+    }
+}
+
+// Student 是一种 Person，增加独有成绩并重写描述行为。
+class Student extends Person {
+    private int score = 0;
+
+    public Student(String name, int score) {
+        super(name);
+        if (score >= 0 && score <= 100) {
+            this.score = score;
+        }
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean setScore(int score) {
+        if (score < 0 || score > 100) {
+            return false;
+        }
+        this.score = score;
+        return true;
+    }
+
+    @Override
+    public String describe() {
+        return super.describe() + "，成绩：" + score;
+    }
+}
+
+// Teacher 复用父类姓名，保存自己的科目。
+class Teacher extends Person {
+    private String subject = "未设置";
+
+    public Teacher(String name, String subject) {
+        super(name);
+        if (subject != null && !subject.isBlank()) {
+            this.subject = subject;
+        }
+    }
+
+    @Override
+    public String describe() {
+        return super.describe() + "，科目：" + subject;
+    }
+}
+```
+
+运行结果：
+
+```text
+学生成绩：85
+转换后仍是原对象：true
+不是学生，跳过成绩读取
+不是学生，跳过成绩读取
+```
+
+instanceof 对 null 返回 false。教师不是学生，(Student) teacher 不会把教师变成学生：从父类引用强转到错误子类会在运行时产生 ClassCastException，本章不通过异常捕获掩盖错误转换。
+
+成功转换也不创建新对象，不重新调用构造；== 验证转换前后仍为同一对象。共同任务优先使用多态：只是打印 describe 或计算 calculateFee，就不需要向下转型。
+
+## 7. 抽象类：共同状态与必须完成的行为
+
+### 7.1 为什么把 Member 定义为 abstract
+
+会员都有姓名，但应付费用由会员种类决定。Member 保存共同状态与金额范围，calculateFee 声明为抽象方法，让普通会员和 VIP 实现。
+
+抽象类不能直接 new，但可以作为变量、参数、返回值和数组元素类型；可以有构造方法、实例字段、普通方法和静态方法。抽象类也可以不含抽象方法；但含抽象方法的类必须是抽象类。
+
+非抽象子类必须实现所有仍未实现的抽象方法，或者继承已有具体实现。抽象方法没有方法体，以分号结束；不能把这个写法套到普通具体方法上。
+
+### 7.2 统一费用规则
+
+| 项目     | 本章约定                            |
+| -------- | ----------------------------------- |
+| 金额单位 | 整数分                              |
+| 合法原价 | 0～100000，包含端点                 |
+| 普通会员 | 原价                                |
+| VIP 会员 | originalFee \* 9 / 10，不足一分舍去 |
+| 非法原价 | 返回 -1，作为错误标记               |
+| 姓名     | 无效回退“未命名”，有效值原样保存    |
+
+金额上限保证先乘 9 也不会发生 int 溢出。原价 1 分，VIP 费用 0 分，这是当前舍入规则的结果；不能未经说明改成四舍五入。这里的计价仅用于展示多态。
+
+```java
+// 不能 new Member，但能定义 Member 引用、参数和数组。
+public class AbstractMemberDemo {
+    public static void main(String[] args) {
+        Member[] members = {new RegularMember("小林"), new VipMember("小周")};
+        for (Member member : members) {
+            System.out.println(member.getName() + "应付（分）：" + member.calculateFee(10000));
+        }
+        System.out.println("VIP 原价 1 分：" + members[1].calculateFee(1));
+        System.out.println("无效原价：" + members[1].calculateFee(-1));
+    }
+}
+
+// 抽象类保存共享状态；费用单位为分，无效金额统一返回 -1。
+abstract class Member {
+    public static final int MAX_FEE = 100000;
+    private String name = "未命名";
+
+    public Member(String name) {
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public static boolean isValidFee(int originalFee) {
+        return originalFee >= 0 && originalFee <= MAX_FEE;
+    }
+
+    public abstract int calculateFee(int originalFee);
+}
+
+// 普通会员原价。
+class RegularMember extends Member {
+    public RegularMember(String name) {
+        super(name);
+    }
+
+    @Override
+    public int calculateFee(int originalFee) {
+        if (!Member.isValidFee(originalFee)) {
+            return -1;
+        }
+        return originalFee;
+    }
+}
+
+// VIP 九折，整数除法将不足一分的部分舍去。
+class VipMember extends Member {
+    public VipMember(String name) {
+        super(name);
+    }
+
+    @Override
+    public int calculateFee(int originalFee) {
+        if (!Member.isValidFee(originalFee)) {
+            return -1;
+        }
+        return originalFee * 9 / 10;
+    }
+}
+```
+
+运行结果：
+
+```text
+小林应付（分）：10000
+小周应付（分）：9000
+VIP 原价 1 分：0
+无效原价：-1
+```
+
+Member 构造仍会在 new VipMember(...) 的过程中执行，负责姓名初始化。不能 new Member，不等于 Member 的构造方法没有用途。
+
+isValidFee 是类级工具方法，通过 Member.isValidFee 调用；calculateFee 是实例行为，根据实际会员选择实现。-1 只是这里明确约定的错误标记，不是有效费用，调用方必须处理。
+
+## 8. 接口：定义一种共同能力
+
+### 8.1 implements 与接口方法
+
+Payment 只要求“能够根据金额返回支付说明”。现金和银行卡实现这个能力，调用方只依赖 Payment，不需要知道具体类。
+
+本例接口方法省略修饰符时隐式 public abstract，实现方法必须 public，并添加 @Override。实现中不写 public 会缩小访问权限，导致编译错误。
+
+```java
+// 调用方依赖接口，替换实现时不用改 checkout 的方法体。
+public class InterfacePaymentDemo {
+    public static void main(String[] args) {
+        checkout(new CashPayment(), 1200);
+        checkout(new CardPayment(), 1200);
+        checkout(new CardPayment(), 0);
+    }
+
+    // payment 约定非 null；不同实现遵守同一金额规则。
+    public static void checkout(Payment payment, int amountInCents) {
+        System.out.println(payment.pay(amountInCents));
+    }
+}
+
+// 接口定义共同能力；本例仅返回模拟说明，不执行真实支付。
+interface Payment {
+    String pay(int amountInCents);
+}
+
+class CashPayment implements Payment {
+    @Override
+    public String pay(int amountInCents) {
+        if (amountInCents <= 0) {
+            return "金额必须为正整数（分）";
+        }
+        return "现金支付：" + amountInCents + "分";
+    }
+}
+
+class CardPayment implements Payment {
+    @Override
+    public String pay(int amountInCents) {
+        if (amountInCents <= 0) {
+            return "金额必须为正整数（分）";
+        }
+        return "银行卡支付：" + amountInCents + "分";
+    }
+}
+```
+
+运行结果：
+
+```text
+现金支付：1200分
+银行卡支付：1200分
+金额必须为正整数（分）
+```
+
+pay 仅返回模拟文字，不打印、不操作账户。接口语法不会自动保证输入合法：两个实现都必须遵守同一约定，任意非正数返回错误文字，任意正 int 返回对应说明。checkout 的 payment 参数约定非 null，打印放在调用层。
+
+### 8.2 接口还有哪些规则
+
+- 接口不能直接实例化，没有构造方法，没有每个对象各自的实例字段。
+- 接口字段隐式 public static final，是常量，不是各实现对象共享的可变状态。
+- 类只能直接继承一个类，但可以实现多个接口；接口可以 extends 一个或多个接口。
+- JDK 17 接口还支持 default、static、private 方法，本章只使用抽象方法，不能据此认为接口永远没有方法体。
+- 如果类继承父类并实现接口，extends 写在 implements 前面。
+
+## 9. 抽象类与接口可以一起使用
+
+### 9.1 如何选择
+
+| 需求                             | 更合适的选择                   |
+| -------------------------------- | ------------------------------ |
+| 相关类型共享字段、构造和部分实现 | 抽象类，例如 Member            |
+| 多种类型对外提供相同能力         | 接口，例如 Payment、Reportable |
+| 共享状态，同时提供某种能力       | 继承抽象类，并实现接口         |
+
+接口不是“更高级的抽象类”，二者侧重点不同，也没有必须二选一的规则。不要为了练语法，把本来简单的模型拆成多层空类型。
+
+### 9.2 示例：会员既能计费，也能提供摘要
+
+Reportable 要求 summary。CourseMember implements Reportable，同时保留姓名和抽象计费方法。CourseMember 本身是抽象类，可以暂不实现 summary，交给两个具体子类。
+
+下面的数组非 null，允许空数组和 null 项。totalFee 先校验原价，再 long 累加；合法原价下空或全 null 为 0，原价不合法时即使空数组也为 -1。
+
+```java
+// 练习 5：一个类可以继承抽象父类，同时实现接口。
+public class MemberFeeDemo {
+    public static void main(String[] args) {
+        CourseMember[] members = {new RegularCourseMember("小林"), null, new VipCourseMember("小周")};
+        for (CourseMember member : members) {
+            if (member != null) {
+                System.out.println(member.summary() + "，应付（分）：" + member.calculateFee(10000));
+            }
+        }
+        System.out.println("合计（分）：" + totalFee(members, 10000));
+        System.out.println("零原价：" + totalFee(members, 0));
+        System.out.println("无效原价：" + totalFee(members, -1));
+        System.out.println("空数组：" + totalFee(new CourseMember[0], 10000));
+    }
+
+    // 原价无效时，即使数组为空也返回 -1；有效时跳过 null 元素。
+    public static long totalFee(CourseMember[] members, int originalFee) {
+        if (!CourseMember.isValidFee(originalFee)) {
+            return -1;
+        }
+        long total = 0;
+        for (CourseMember member : members) {
+            if (member != null) {
+                total += member.calculateFee(originalFee);
+            }
+        }
+        return total;
+    }
+}
+
+interface Reportable {
+    String summary();
+}
+
+abstract class CourseMember implements Reportable {
+    public static final int MAX_FEE = 100000;
+    private String name = "未命名";
+
+    public CourseMember(String name) {
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public static boolean isValidFee(int originalFee) {
+        return originalFee >= 0 && originalFee <= MAX_FEE;
+    }
+
+    public abstract int calculateFee(int originalFee);
+    // 抽象类允许暂不实现 summary()，交给具体子类。
+}
+
+class RegularCourseMember extends CourseMember {
+    public RegularCourseMember(String name) {
+        super(name);
+    }
+
+    @Override
+    public int calculateFee(int originalFee) {
+        if (!CourseMember.isValidFee(originalFee)) {
+            return -1;
+        }
+        return originalFee;
+    }
+
+    @Override
+    public String summary() {
+        return "普通会员：" + getName();
+    }
+}
+
+class VipCourseMember extends CourseMember {
+    public VipCourseMember(String name) {
+        super(name);
+    }
+
+    @Override
+    public int calculateFee(int originalFee) {
+        if (!CourseMember.isValidFee(originalFee)) {
+            return -1;
+        }
+        return originalFee * 9 / 10;
+    }
+
+    @Override
+    public String summary() {
+        return "VIP 会员：" + getName();
+    }
+}
+```
+
+运行结果：
+
+```text
+普通会员：小林，应付（分）：10000
+VIP 会员：小周，应付（分）：9000
+合计（分）：19000
+零原价：0
+无效原价：-1
+空数组：0
+```
+
+统计循环只使用共同 calculateFee；展示只调用共同 summary。这里不判断“它到底是不是 VIP”。要新增一种会员，只需实现契约，原有循环继续适用。
+
+增加测试：原价 1/9/10/100000 分，两人合计分别为 1/17/19/190000；-1、100001、int 最小值和最大值均拒绝。30000 个普通会员、每人 100000 分，总和为 3000000000，需要 long。
+
+## 10. 综合：会员计费与支付方式组合
+
+会员类型决定费用，Payment 实现决定支付说明，这两个变化分别通过共同类型表达。
+
+totalFee 遵循与上节相同的统计约定。checkout 的 member、payment 均非 null：先验证原价，再计算；无效原价输出“原价无效”，费用 0 输出“无需支付”，两者都不调用支付。只有正费用才交给 Payment。
+
+```java
+// 综合：抽象类负责费用差异，接口负责支付方式差异。
+public class MemberCheckoutDemo {
+    public static void main(String[] args) {
+        Member[] members = {new RegularMember("小林"), null, new VipMember("小周")};
+        for (Member member : members) {
+            if (member != null) {
+                System.out.println(member.getName() + "应付（分）：" + member.calculateFee(10000));
+            }
+        }
+        System.out.println("合计（分）：" + totalFee(members, 10000));
+        checkout(members[2], new CardPayment(), 10000);
+        checkout(members[2], new CashPayment(), 0);
+        checkout(members[0], new CashPayment(), -1);
+        System.out.println("空数组合计：" + totalFee(new Member[0], 10000));
+    }
+
+    // members 非 null，可为空或含 null；输入原价无效时返回 -1，不累加错误标记。
+    public static long totalFee(Member[] members, int originalFee) {
+        if (!Member.isValidFee(originalFee)) {
+            return -1;
+        }
+        long total = 0;
+        for (Member member : members) {
+            if (member != null) {
+                total += member.calculateFee(originalFee);
+            }
+        }
+        return total;
+    }
+
+    // member、payment 非 null；先校验原价，再计算，零费用不调用支付。
+    public static void checkout(Member member, Payment payment, int originalFee) {
+        if (!Member.isValidFee(originalFee)) {
+            System.out.println("原价无效");
+            return;
+        }
+        int fee = member.calculateFee(originalFee);
+        if (fee == 0) {
+            System.out.println("无需支付");
+            return;
+        }
+        System.out.println(member.getName() + "：" + payment.pay(fee));
+    }
+}
+
+// 抽象类保存共享状态；费用单位为分，无效金额统一返回 -1。
+abstract class Member {
+    public static final int MAX_FEE = 100000;
+    private String name = "未命名";
+
+    public Member(String name) {
+        if (name != null && !name.isBlank()) {
+            this.name = name;
+        }
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public static boolean isValidFee(int originalFee) {
+        return originalFee >= 0 && originalFee <= MAX_FEE;
+    }
+
+    public abstract int calculateFee(int originalFee);
+}
+
+// 普通会员原价。
+class RegularMember extends Member {
+    public RegularMember(String name) {
+        super(name);
+    }
+
+    @Override
+    public int calculateFee(int originalFee) {
+        if (!Member.isValidFee(originalFee)) {
+            return -1;
+        }
+        return originalFee;
+    }
+}
+
+// VIP 九折，整数除法将不足一分的部分舍去。
+class VipMember extends Member {
+    public VipMember(String name) {
+        super(name);
+    }
+
+    @Override
+    public int calculateFee(int originalFee) {
+        if (!Member.isValidFee(originalFee)) {
+            return -1;
+        }
+        return originalFee * 9 / 10;
+    }
+}
+
+// 接口定义共同能力；本例仅返回模拟说明，不执行真实支付。
+interface Payment {
+    String pay(int amountInCents);
+}
+
+class CashPayment implements Payment {
+    @Override
+    public String pay(int amountInCents) {
+        if (amountInCents <= 0) {
+            return "金额必须为正整数（分）";
+        }
+        return "现金支付：" + amountInCents + "分";
+    }
+}
+
+class CardPayment implements Payment {
+    @Override
+    public String pay(int amountInCents) {
+        if (amountInCents <= 0) {
+            return "金额必须为正整数（分）";
+        }
+        return "银行卡支付：" + amountInCents + "分";
+    }
+}
+```
+
+运行结果：
+
+```text
+小林应付（分）：10000
+小周应付（分）：9000
+合计（分）：19000
+小周：银行卡支付：9000分
+无需支付
+原价无效
+空数组合计：0
+```
+
+会员允许免费，支付方法只接受正金额，二者约定并不冲突：结算负责识别无需支付的情况。同样，VIP 原价 1 分产生 0 分，也走“无需支付”，不能直接传给支付方法后报金额错误。
+
+如果增加一种会员，必须保持输入范围、错误标记与合法费用非负的规则。多态不意味着各实现可以随意改变共同契约。求和不能把 -1 当金额，支付也不能靠接收到 -1 才猜出原价无效。
+
+## 11. 换一个场景：抽象图形数组
+
+图形拥有共同面积行为，各种图形用自己的字段计算。下面使用矩形和正方形，验证多态不依赖会员这个业务背景。
+
+边长是 0～10000 的整数，初始 1，无效构造参数逐项保留 1；面积使用 int，在当前范围内安全，总面积使用 long。数组非 null，允许空数组和 null 元素。
+
+```java
+// 练习 3：通过抽象父类统计面积，支持空数组与空位置。
+public class ShapeArrayDemo {
+    public static void main(String[] args) {
+        PracticeShape[] shapes = {new RectangleShape(4, 2), null, new SquareShape(3)};
+        for (PracticeShape shape : shapes) {
+            if (shape != null) {
+                System.out.println(shape.area());
+            }
+        }
+        System.out.println("总面积：" + totalArea(shapes));
+        System.out.println("空数组：" + totalArea(new PracticeShape[0]));
+        System.out.println("全部为空：" + totalArea(new PracticeShape[2]));
+        System.out.println("无效长回退：" + new RectangleShape(-1, 3).area());
+    }
+
+    // 参数数组非 null，不改变数组或对象。
+    public static long totalArea(PracticeShape[] shapes) {
+        long total = 0;
+        for (PracticeShape shape : shapes) {
+            if (shape != null) {
+                total += shape.area();
+            }
+        }
+        return total;
+    }
+}
+
+abstract class PracticeShape {
+    public abstract int area();
+}
+
+class RectangleShape extends PracticeShape {
+    private int length = 1;
+    private int width = 1;
+
+    public RectangleShape(int length, int width) {
+        if (length >= 0 && length <= 10000) {
+            this.length = length;
+        }
+        if (width >= 0 && width <= 10000) {
+            this.width = width;
+        }
+    }
+
+    @Override
+    public int area() {
+        return length * width;
+    }
+}
+
+class SquareShape extends PracticeShape {
+    private int side = 1;
+
+    public SquareShape(int side) {
+        if (side >= 0 && side <= 10000) {
+            this.side = side;
+        }
+    }
+
+    @Override
+    public int area() {
+        return side * side;
+    }
+}
+```
+
+运行结果：
+
+```text
+8
+9
+总面积：17
+空数组：0
+全部为空：0
+无效长回退：3
+```
+
+totalArea 只调用 area，不做强转、不排序、不修改输入。验证 30 个边长 10000 的正方形，总面积应为 3000000000；0 边长合法；-1 和 10001 回退 1。
+
+## 12. final 在继承中的含义
+
+第七章已经介绍 final 变量不能重新赋值，引用指向的可变对象仍可能修改。本章补充两种用途：final 方法禁止子类重写，final 类禁止被继承。
+
+```java
+// final 方法禁止重写；final 类禁止被继承，普通类仍可继承。
+public class FinalRuleDemo {
+    public static void main(String[] args) {
+        BadgeStudent student = new BadgeStudent();
+        System.out.println(student.school());
+        CourseCode code = new CourseCode("JAVA17");
+        System.out.println(code.getValue());
+    }
+}
+
+class BadgePerson {
+    public final String school() {
+        return "第一大学";
+    }
+}
+
+class BadgeStudent extends BadgePerson {
+    // 可以继承 school()，但不能重写。
+}
+
+final class CourseCode {
+    private final String value;
+
+    public CourseCode(String value) {
+        this.value = value;
+    }
+
+    public String getValue() {
+        return value;
+    }
+}
+```
+
+运行结果：
+
+```text
+第一大学
+JAVA17
+```
+
+final school 方法仍可被子类继承并调用，只是不允许替换实现。CourseCode 是 final 类，所以不能定义 extends CourseCode 的子类；这与字段是否 private、引用是否 final 是不同问题。
+
+抽象方法要求子类实现，final 方法禁止重写，所以同一个方法不能同时 abstract 与 final。抽象类需要子类完成具体对象，也不能声明为 final。
+
+## 13. Object、toString 与对象身份
+
+普通类隐式继承 Object，因此可以重写 toString，决定对象的文字表示。直接 println 一个非 null 对象时会使用它的 toString 结果。默认表示通常包含“类名@十六进制哈希值”，不能当成可依赖的内存地址。
+
+```java
+// 未显式 extends 的普通类隐式继承 Object；重写 toString 改善可读性。
+public class ObjectMethodDemo {
+    public static void main(String[] args) {
+        SummaryStudent first = new SummaryStudent("小林", 85);
+        SummaryStudent alias = first;
+        SummaryStudent second = new SummaryStudent("小林", 85);
+        System.out.println(first);
+        System.out.println("同一引用 ==：" + (first == alias));
+        System.out.println("同内容不同对象 ==：" + (first == second));
+        System.out.println("未重写 equals：" + first.equals(second));
+    }
+}
+
+class SummaryStudent {
+    private final String name;
+    private final int score;
+
+    public SummaryStudent(String name, int score) {
+        this.name = name;
+        this.score = score;
+    }
+
+    @Override
+    public String toString() {
+        return "学生：" + name + "，成绩：" + score;
+    }
+}
+```
+
+运行结果：
+
+```text
+学生：小林，成绩：85
+同一引用 ==：true
+同内容不同对象 ==：false
+未重写 equals：false
+```
+
+toString 应返回文字，不在内部打印；避免错误写成 void 或 toString(String name)，那都不是正确重写。
+
+引用类型的 == 比较对象身份。Object 默认 equals 也比较身份；有些类会重写为值比较，具体行为要看类的实现。这里只重写 toString，没有重写 equals，因此两个同名同分学生的 equals 仍为 false。
+
+不要把“equals 总是比较内容”当规则，也不要只根据 toString 一致就判断对象相等。完整 equals/hashCode 约定与集合中的去重关系，后续再学习。
+
+## 14. 常见错误
+
+| 现象                               | 原因与修正                                          |
+| ---------------------------------- | --------------------------------------------------- |
+| 子类不能直接用 name                | 父类 private 状态通过 getter 使用，不重复定义字段   |
+| 子类构造找不到父类无参构造         | 显式 super(参数)，父类构造不会自动变成子类构造      |
+| this(...) 与 super(...) 同时出现   | JDK 17 的同一构造体只能一个放第一条语句             |
+| @Override 提示未覆盖               | 检查大小写、参数、返回类型和是否为实例方法          |
+| 重写 public 方法时权限报错         | 子类不能缩小权限，接口实现也必须 public             |
+| 父类引用不能访问子类独有方法       | 声明类型决定可调用成员；必要时先判断再转换          |
+| 强转教师为学生失败                 | 转换不改变实际对象，不能把兄弟类型相互变换          |
+| show(person) 没选择 Student 参数版 | 重载按编译期类型选，运行期重写是另一步              |
+| 抽象类或接口不能 new               | 创建具体子类或实现类，引用仍可以用共同类型          |
+| null 项导致空指针                  | 区分数组非 null 前提与元素可能 null，遍历时跳过空位 |
+| VIP 原价 1 分费用是 0              | 当前采用整数舍去规则，零费用走无需支付              |
+| 总金额或面积变成负数               | 累加器使用 long，检查乘法本身是否也在范围内         |
+| 无效原价被累计成负数               | 先校验原价，-1 错误标记不得参与求和                 |
+| toString 一样就认为 equals 一样    | 描述、身份、值比较是不同概念                        |
+
+调试多态时，可以同时记录“变量声明类型、实际对象类型、编译时选中的签名、运行时执行的实现”，避免只看变量名猜行为。
+
+## 15. 巩固练习与思考
+
+### 15.1 五道练习与一题选做
+
+1. **继承与封装**：定义 PracticePerson、PracticeStudent，姓名无效回退“未命名”，成绩构造回退 0；重写描述，非法 setScore 保留旧值。验证 null/空白姓名和 -1/0/100/101 分。
+2. **分派预测**：动物父类、狗子类重写 speak；show 分别重载动物参数与狗参数。让两个声明类型不同的变量指向同一狗，预测调用各自选择的重载与 speak 实现，再运行验证。
+3. **抽象图形**：自行写出本章图形模型与 long 总面积方法。验证空数组、全 null、零边长、非法构造和 30 个最大正方形；统计不改变输入。
+4. **接口支付**：自行实现两种 Payment，非正数返回错误文字，正数返回说明；入口只接收接口，不写具体类型判断。然后增加一种新实现，确认入口方法无需改动。
+5. **会员计费**：使用抽象父类与 Reportable 组合，先独立实现再对照第九节。验证 0/1/9/10/100000 分、无效原价、空数组与 long 总和；增加新会员时保持共同规则。
+6. **选做对象描述**：定义 final BookSummary，封装标题并重写 toString，不重写 equals。比较别名引用与同标题不同对象，解释打印内容相同为什么仍可能不相等。
+
+### 15.2 思考题
+
+- 子类对象拥有父类初始化的状态，为什么仍不能直接读父类 private 字段？
+- 没写 super(...) 为什么也可能报“没有无参构造”？
+- this(...) 委托与 super(...) 调用会创建几个对象？
+- show(person) 为什么选父类参数，而 person.describe() 又执行子类版本？
+- 为何父类引用不能直接调用 getScore，但仍可以引用学生对象？
+- null instanceof Student 是什么结果？强制转换能把 Teacher 变成 Student 吗？
+- 抽象类不能 new，为什么仍需要构造方法？
+- 为什么接口方法不写 public 合法，实现方法不写 public 却出错？
+- 为什么金额统计需要先校验，而结算需要单独识别零费用？
+- final 方法是否还能继承？重写 toString 是否改变默认 equals？
+
+<details>
+<summary>展开查看思考题答案</summary>
+
+- private 按声明类限制直接访问，继承不取消封装；使用可访问的父类行为。
+- 未显式委托时编译器尝试插入 super()，父类必须存在可访问的无参构造，否则需显式传参。
+- 只有一次 new，只创建一个子类对象；构造链完成这个对象的初始化。
+- 重载按编译期类型选签名，重写实例方法按实际对象选实现，是两个阶段。
+- 向上转型保留对象身份，但变量的可调用成员由声明类型限制。
+- null 的 instanceof 为 false；强转只改变使用视角，不能改变对象实际类型。
+- 子类创建时仍需要父类构造来初始化共同状态。
+- 接口抽象方法隐式 public，实现时不能缩小访问权限。
+- -1 是错误标记，不能累加；零费用合法但无需调用只接受正数的支付逻辑。
+- final 方法可以继承和调用，只禁止重写；toString 与 equals 是独立行为。
+
+</details>
+
+### 15.3 运行方式与配套项目
+
+例如将第十节完整代码保存为 MemberCheckoutDemo.java，用 JDK 17 执行：
+
+```bash
+javac -encoding UTF-8 --release 17 MemberCheckoutDemo.java
+java MemberCheckoutDemo
+```
+
+模型已在同一代码块中，无需另找源码。切换程序时使用独立目录，避免重复模型或旧 class 文件互相影响。
+
+配套项目：[java-study-basic](https://github.com/coder-sunshine/java-study-basic)。笔记示例将模型合并成单文件，教学项目使用 package 并将常用模型分文件保存。
+
+| 内容                                 | 本地教学项目位置（相对项目根目录）         |
+| ------------------------------------ | ------------------------------------------ |
+| 继承、多态、抽象会员、支付接口等演示 | src/basic/chapter08polymorphism/examples/  |
+| 五道必做和一道选做骨架               | src/basic/chapter08polymorphism/exercises/ |
+| 每题独立参考答案                     | src/basic/chapter08polymorphism/solutions/ |
+| 题目、输出和边界要求                 | exercises/chapter08.md                     |
+
+第九节对应 MemberFeeSolution，第十一节对应 ShapeArraySolution，笔记入口重命名为 Demo。上表描述本地目录，GitHub 内容以实际推送版本为准。
+
+封装规则可回看[第七章](/backend/java/basic/ch07-encapsulation/)，对象引用与 null 可回看[第六章](/backend/java/basic/ch06-object/)。后续建议继续学习常用类与 API，再学习异常处理、泛型与集合、文件 IO，并逐步完善学生信息管理程序。
